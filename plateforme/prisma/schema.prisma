@@ -1,0 +1,208 @@
+// Schéma de base de données CCC — cahier des charges v1.0 (sections 4 à 17)
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum StaffRole {
+  SUPER_ADMIN
+  EDITOR
+  RIGHTS_MANAGER
+  FINANCE
+  SUPPORT
+  ANALYST
+}
+
+enum WorkType {
+  BOOK
+  FILM
+  DOCUMENTARY
+}
+
+enum WorkStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum AccessMode {
+  FREE
+  PURCHASE
+  SUBSCRIPTION
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  EXPIRED
+}
+
+enum Plan {
+  MONTHLY
+  YEARLY
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String?  @unique
+  phone        String?  @unique
+  passwordHash String?
+  name         String?
+  country      String?
+  locale       String   @default("fr")
+  staffRole    StaffRole?
+  disabledAt   DateTime?
+  createdAt    DateTime @default(now())
+
+  devices       Device[]
+  orders        Order[]
+  subscriptions Subscription[]
+  progress      Progress[]
+  favorites     Favorite[]
+}
+
+// Appareil autorisé (section 13)
+model Device {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  platform   String
+  keyHash    String    @unique
+  lastSeenAt DateTime  @default(now())
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model Work {
+  id          String     @id @default(cuid())
+  type        WorkType
+  slug        String     @unique
+  title       String
+  author      String?
+  description String?
+  coverUrl    String?
+  language    String     @default("fr")
+  status      WorkStatus @default(DRAFT)
+  access      AccessMode
+  downloadable Boolean    @default(false)
+  durationMin Int?
+  pages       Int?
+  publishedAt DateTime?
+  createdAt   DateTime   @default(now())
+
+  prices    Price[]
+  licenses  License[]
+  orders    Order[]
+  progress  Progress[]
+  favorites Favorite[]
+
+  @@index([type, status])
+}
+
+// Prix par pays (section 11)
+model Price {
+  id       String @id @default(cuid())
+  workId   String
+  work     Work   @relation(fields: [workId], references: [id], onDelete: Cascade)
+  country  String
+  currency String
+  amount   Int // plus petite unité de la devise
+
+  @@unique([workId, country])
+}
+
+// Registre des licences par œuvre et territoire (section 17)
+model License {
+  id          String    @id @default(cuid())
+  workId      String
+  work        Work      @relation(fields: [workId], references: [id], onDelete: Cascade)
+  countries   String[] // codes pays ISO ; vide = aucun pays autorisé
+  allowWeb    Boolean   @default(true)
+  allowMobile Boolean   @default(true)
+  allowOffline Boolean  @default(false)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  contractRef String?
+  createdAt   DateTime  @default(now())
+
+  @@index([workId])
+}
+
+model Order {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id])
+  workId    String
+  work      Work        @relation(fields: [workId], references: [id])
+  status    OrderStatus @default(PENDING)
+  currency  String
+  amount    Int
+  provider  String?
+  providerRef String?
+  createdAt DateTime    @default(now())
+  paidAt    DateTime?
+
+  @@index([userId])
+}
+
+model Subscription {
+  id        String             @id @default(cuid())
+  userId    String
+  user      User               @relation(fields: [userId], references: [id])
+  plan      Plan
+  status    SubscriptionStatus @default(ACTIVE)
+  startsAt  DateTime           @default(now())
+  endsAt    DateTime
+  renewsAt  DateTime?
+  provider  String?
+
+  @@index([userId, status])
+}
+
+model Progress {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workId    String
+  work      Work     @relation(fields: [workId], references: [id])
+  position  Float // page ou seconde
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, workId])
+}
+
+model Favorite {
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workId String
+  work   Work   @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  @@id([userId, workId])
+}
+
+// Journal d'audit (sections 4.3 et 16)
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  target    String?
+  details   Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
