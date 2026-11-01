@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import { ActionForm, CheckField, Field, SelectField } from "@/components/ActionForm";
 import { CATALOG_ROLES, requireStaff } from "@/lib/dal";
@@ -9,9 +10,9 @@ export const metadata = { title: "Administration — CCC" };
 
 export default function AdminPage() {
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-10">
-      <h1 className="mb-6 text-2xl font-semibold text-[#14213D]">Administration du catalogue</h1>
-      <Suspense fallback={<p className="text-zinc-500">Chargement…</p>}>
+    <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-12">
+      <h1 className="mb-6 font-display text-3xl font-semibold text-brand">Administration du catalogue</h1>
+      <Suspense fallback={<p className="text-muted">Chargement…</p>}>
         <AdminContent />
       </Suspense>
     </main>
@@ -29,6 +30,7 @@ async function AdminContent() {
       title: true,
       type: true,
       status: true,
+      fileKey: true,
       licenses: { select: { countries: true, contractRef: true } },
     },
   });
@@ -36,9 +38,9 @@ async function AdminContent() {
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-[#14213D]">Œuvres ({works.length})</h2>
+        <h2 className="mb-3 font-display text-xl font-semibold text-brand">Œuvres ({works.length})</h2>
         {works.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-zinc-300 bg-white p-6 text-zinc-500">
+          <p className="rounded-2xl border border-dashed border-line bg-surface p-6 text-muted">
             Aucune œuvre pour le moment. Ajoutez la première avec le formulaire.
           </p>
         ) : (
@@ -48,15 +50,23 @@ async function AdminContent() {
               return (
                 <li
                   key={w.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-white p-4"
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-4"
                 >
                   <div>
-                    <p className="font-semibold text-zinc-900">{w.title}</p>
-                    <p className="text-xs text-zinc-500">
+                    <p className="font-semibold text-ink">{w.title}</p>
+                    <p className="text-xs text-muted">
                       {TYPE_LABEL[w.type]} · {STATUS_LABEL[w.status]} ·{" "}
                       {documented ? "droits documentés" : "droits à documenter"}
+                      {w.type === "BOOK" && (w.fileKey ? " · fichier en place" : " · fichier manquant")}
                     </p>
                   </div>
+                  <div className="flex items-center gap-2">
+                  <Link
+                    href={`/admin/oeuvres/${w.id}`}
+                    className="rounded-full bg-brand px-4 py-1.5 text-sm font-semibold text-white transition-colors hover:brightness-110"
+                  >
+                    Gérer
+                  </Link>
                   <form action={setWorkStatus}>
                     <input type="hidden" name="id" value={w.id} />
                     <input
@@ -67,11 +77,12 @@ async function AdminContent() {
                     <button
                       type="submit"
                       disabled={w.status !== "PUBLISHED" && !documented}
-                      className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded-full border border-line px-4 py-1.5 text-sm font-medium transition-colors hover:border-brand hover:text-brand disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {w.status === "PUBLISHED" ? "Dépublier" : "Publier"}
                     </button>
                   </form>
+                  </div>
                 </li>
               );
             })}
@@ -79,8 +90,8 @@ async function AdminContent() {
         )}
       </section>
 
-      <section className="h-fit rounded-xl border border-zinc-200 bg-white p-5">
-        <h2 className="mb-4 text-lg font-semibold text-[#14213D]">Ajouter une œuvre</h2>
+      <section className="h-fit rounded-2xl border border-line bg-surface p-5 shadow-sm">
+        <h2 className="mb-4 font-display text-xl font-semibold text-brand">Ajouter une œuvre</h2>
         <ActionForm action={createWork} submitLabel="Enregistrer">
           <Field label="Titre" name="title" />
           <SelectField
@@ -106,8 +117,8 @@ async function AdminContent() {
           />
           <Field label="Prix (F CFA)" name="price" type="number" required={false} hint="Seulement pour l’achat à l’unité." />
 
-          <fieldset className="flex flex-col gap-3 rounded-lg bg-[#F6EFDD] p-3">
-            <legend className="px-1 text-sm font-semibold text-[#14213D]">Droits (obligatoires pour publier)</legend>
+          <fieldset className="flex flex-col gap-3 rounded-2xl bg-gold-soft/50 p-3">
+            <legend className="px-1 text-sm font-semibold text-brand">Droits (obligatoires pour publier)</legend>
             <Field label="Pays autorisés" name="countries" required={false} hint="Codes à 2 lettres séparés par des virgules : BJ, TG, FR" />
             <Field label="Référence du contrat de licence" name="contractRef" required={false} />
             <CheckField label="Téléchargement hors ligne autorisé" name="allowOffline" />

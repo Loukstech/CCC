@@ -1,26 +1,298 @@
 @import "tailwindcss";
 
+/* Charte issue du logo CCC : bleu profond, bleu clair, or, blanc. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --brand: #0a3d91;
+  --brand-deep: #061f4d;
+  --brand-night: #040f26;
+  --brand-light: #1e73d8;
+  --gold: #d4a017;
+  --gold-soft: #f3e3b0;
+  --paper: #f6f4ee;
+  --ink: #0b1220;
+  --muted: #5b6475;
+  --line: #e4e0d4;
+  --surface: #ffffff;
+}
+
+/*
+ * Thème sombre. Le script de app/layout.tsx pose data-theme="light" ou "dark" sur <html> avant l'affichage
+ * (choix de l'utilisateur, sinon thème de l'appareil). Sans JavaScript, on suit directement l'appareil.
+ */
+:root[data-theme="dark"] {
+  --brand: #5a95ee;
+  --paper: #0a1020;
+  --ink: #eef2fb;
+  --muted: #9aa7c0;
+  --line: rgb(255 255 255 / 0.12);
+  --surface: #111b34;
+  --gold-soft: #3a3418;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --brand: #5a95ee;
+    --paper: #0a1020;
+    --ink: #eef2fb;
+    --muted: #9aa7c0;
+    --line: rgb(255 255 255 / 0.12);
+    --surface: #111b34;
+    --gold-soft: #3a3418;
+  }
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-brand: var(--brand);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-night: var(--brand-night);
+  --color-brand-light: var(--brand-light);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-surface: var(--surface);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-fraunces);
 }
 
+html {
+  scroll-behavior: smooth;
+  color-scheme: light;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  html:not([data-theme]) {
+    color-scheme: dark;
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+::selection {
+  background: var(--gold);
+  color: var(--brand-night);
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand-light);
+  outline-offset: 2px;
+}
+
+.font-display {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-optical-sizing: auto;
+}
+
+/* Boutons : sobres, coins adoucis ; le bleu est l'action principale, l'or reste un accent. */
+.btn {
+  display: inline-flex;
+  height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  padding: 0 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease, background-color 0.15s ease;
+}
+.btn:active {
+  transform: scale(0.97);
+}
+.btn-primary,
+.btn-brand {
+  background: linear-gradient(135deg, #2f7be8, #0a3d91);
+  color: #fff;
+  box-shadow: 0 8px 20px -10px rgb(10 61 145 / 0.8);
+}
+.btn-primary:hover,
+.btn-brand:hover {
+  filter: brightness(1.1);
+}
+/* Bouton secondaire vitré, lisible sur les photos. */
+.btn-ghost {
+  border: 1px solid rgb(255 255 255 / 0.3);
+  background: rgb(255 255 255 / 0.14);
+  color: #fff;
+  backdrop-filter: blur(8px);
+}
+.btn-ghost:hover {
+  background: rgb(255 255 255 / 0.24);
+}
+
+/* Fond cinématographique : halos + grain de pellicule */
+.hero-bg {
+  background:
+    radial-gradient(60% 80% at 85% 10%, rgb(30 115 216 / 0.55), transparent 60%),
+    radial-gradient(40% 60% at 5% 100%, rgb(212 160 23 / 0.22), transparent 60%),
+    linear-gradient(160deg, var(--brand-deep), var(--brand-night));
+}
+.film-strip {
+  background-image: radial-gradient(rgb(255 255 255 / 0.18) 28%, transparent 30%);
+  background-size: 22px 22px;
+  mask-image: linear-gradient(to left, black, transparent 70%);
+}
+
+/* Apparition douce */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.rise {
+  animation: rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .rise {
+    animation: none;
+  }
+  .btn,
+  .btn:active {
+    transition: none;
+    transform: none;
+  }
+}
+
+/*
+ * Univers : chaque espace donne une teinte de fond légère à SA page seulement
+ * (variables posées sur le <main> de la page, jamais sur <body> : Next garde en mémoire les pages
+ * déjà visitées, un réglage global se mélangerait entre elles).
+ */
+main[data-universe],
+div[data-universe] {
+  background-color: var(--paper);
+}
+[data-universe="livre"] {
+  --paper: #f8f0dc;
+  --line: #e3d6b4;
+  --muted: #6b6150;
+}
+[data-universe="doc"] {
+  --paper: #e6edf6;
+  --line: #cfd9e8;
+  --muted: #53607a;
+}
+:root[data-theme="dark"] [data-universe="livre"] {
+  --paper: #100d08;
+  --line: rgb(255 255 255 / 0.1);
+  --muted: #a9a08c;
+}
+:root[data-theme="dark"] [data-universe="film"] {
+  --paper: #060a16;
+}
+:root[data-theme="dark"] [data-universe="doc"] {
+  --paper: #08111f;
+  --line: rgb(255 255 255 / 0.1);
+  --muted: #94a3bd;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) [data-universe="livre"] {
+    --paper: #100d08;
+    --line: rgb(255 255 255 / 0.1);
+    --muted: #a9a08c;
+  }
+  :root:not([data-theme]) [data-universe="film"] {
+    --paper: #060a16;
+  }
+  :root:not([data-theme]) [data-universe="doc"] {
+    --paper: #08111f;
+    --line: rgb(255 255 255 / 0.1);
+    --muted: #94a3bd;
+  }
+}
+
+/* Logo : version couleur sur fond clair, version blanche sur fond sombre ou sur une photo. */
+.logo-white {
+  display: none;
+}
+:root[data-theme="dark"] .logo-color {
+  display: none;
+}
+:root[data-theme="dark"] .logo-white {
+  display: block;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .logo-color {
+    display: none;
+  }
+  :root:not([data-theme]) .logo-white {
+    display: block;
+  }
+}
+
+/* Étagère des rangées de livres */
+.shelf-board {
+  height: 0.6rem;
+  border-radius: 0.2rem;
+  background: linear-gradient(#ecd9a3, #c9a84a);
+  box-shadow: 0 8px 12px -6px rgb(60 40 0 / 0.35);
+}
+
+/* ---- En-tête : sur les pages à grand visuel (data-overlay, posé selon la route) il flotte transparent ---- */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  transition: background-color 0.25s ease, box-shadow 0.25s ease;
+}
+.site-header[data-scrolled] {
+  box-shadow: 0 8px 24px -14px rgb(0 0 0 / 0.4);
+}
+/* Au défilement sur téléphone : on retire la barre de recherche (l'onglet Recherche la remplace). */
+.site-header[data-scrolled] .hdr-searchrow {
+  display: none;
+}
+.site-header[data-overlay] {
+  position: fixed;
+  inset-inline: 0;
+}
+.site-header[data-overlay]:not([data-scrolled]) {
+  background: linear-gradient(to bottom, rgb(4 15 38 / 0.7), rgb(4 15 38 / 0.25) 70%, transparent);
+}
+.site-header[data-overlay]:not([data-scrolled]) .site-header-bar {
+  background: transparent;
+  border-color: transparent;
+  backdrop-filter: none;
+}
+.site-header[data-overlay]:not([data-scrolled]) .hdr-link,
+.site-header[data-overlay]:not([data-scrolled]) .hdr-muted {
+  color: rgb(255 255 255 / 0.92);
+}
+.site-header[data-overlay]:not([data-scrolled]) .hdr-link:hover {
+  background: rgb(255 255 255 / 0.15);
+}
+.site-header[data-overlay]:not([data-scrolled]) .logo-color {
+  display: none;
+}
+.site-header[data-overlay]:not([data-scrolled]) .logo-white {
+  display: block;
+}
+/* Recherche : vitrée et transparente sur l'image */
+.site-header[data-overlay]:not([data-scrolled]) .hdr-search input {
+  background: rgb(255 255 255 / 0.14);
+  border-color: rgb(255 255 255 / 0.35);
+  color: #fff;
+  backdrop-filter: blur(10px);
+}
+.site-header[data-overlay]:not([data-scrolled]) .hdr-search input::placeholder {
+  color: rgb(255 255 255 / 0.75);
+}
+.site-header[data-overlay]:not([data-scrolled]) .hdr-search-icon {
+  color: rgb(255 255 255 / 0.85);
 }

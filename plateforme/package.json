@@ -2,20 +2,31 @@
   "name": "plateforme",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.9"
+  },
   "scripts": {
     "dev": "next dev -p 3200",
-    "build": "next build",
+    "build": "prisma generate && node scripts/make-demo-epub.mjs && next build",
     "start": "next start -p 3200",
     "lint": "eslint",
     "db:seed": "tsx prisma/seed.ts",
+    "db:covers": "tsx prisma/demo-covers.ts",
+    "logos": "node scripts/build-logos.mjs",
+    "admin:password": "tsx scripts/set-admin-password.ts",
+    "demo:epub": "node scripts/make-demo-epub.mjs",
     "db:migrate": "prisma migrate dev",
     "db:up": "docker compose up -d"
   },
   "dependencies": {
+    "@neon/config": "^1.10.0",
+    "@neon/env": "^1.6.8",
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
     "dotenv": "^18.0.9",
+    "epubjs": "^0.3.93",
     "jose": "^6.2.14",
+    "jszip": "^3.10.2",
     "next": "16.4.3",
     "pg": "^8.23.1",
     "react": "19.3.0",

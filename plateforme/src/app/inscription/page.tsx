@@ -1,32 +1,38 @@
 import Link from "next/link";
-import { ActionForm, Field } from "@/components/ActionForm";
+import { ActionForm, Field, SelectField } from "@/components/ActionForm";
+import { COUNTRIES } from "@/lib/countries";
+import { AuthShell } from "@/components/AuthShell";
 import { signup } from "@/app/actions/auth";
 
 export const metadata = { title: "Créer un compte — CCC" };
 
 export default function SignupPage() {
   return (
-    <main className="mx-auto w-full max-w-md flex-1 px-4 py-12">
-      <h1 className="mb-6 text-2xl font-semibold text-[#14213D]">Créer un compte</h1>
-      <div className="rounded-xl border border-zinc-200 bg-white p-6">
-        <ActionForm action={signup} submitLabel="Créer mon compte">
-          <Field label="Nom" name="name" />
-          <Field label="Adresse e-mail" name="email" type="email" />
-          <Field label="Mot de passe" name="password" type="password" hint="8 caractères au minimum." />
-          <Field
-            label="Pays"
-            name="country"
-            required={false}
-            hint="Code à 2 lettres (BJ, TG, FR…). Sert à afficher les œuvres disponibles chez vous."
-          />
-        </ActionForm>
-      </div>
-      <p className="mt-4 text-center text-sm text-zinc-600">
-        Déjà inscrit ?{" "}
-        <Link href="/connexion" className="font-semibold text-[#14213D] underline">
-          Se connecter
-        </Link>
-      </p>
-    </main>
+    <AuthShell
+      title="Rejoindre CCC"
+      subtitle="Un compte gratuit pour lire, regarder et télécharger."
+      footer={
+        <>
+          Déjà inscrit ?{" "}
+          <Link href="/connexion" className="font-semibold text-brand underline-offset-4 hover:underline">
+            Se connecter
+          </Link>
+        </>
+      }
+    >
+      <ActionForm action={signup} submitLabel="Créer mon compte">
+        <Field label="Nom" name="name" />
+        <Field label="Adresse e-mail" name="email" type="email" />
+        <Field label="Mot de passe" name="password" type="password" hint="8 caractères au minimum." />
+        <SelectField
+          label="Pays"
+          name="country"
+          options={[
+            { value: "", label: "Choisir mon pays" },
+            ...COUNTRIES.map((c) => ({ value: c.code, label: c.name })),
+          ]}
+        />
+      </ActionForm>
+    </AuthShell>
   );
 }

@@ -43,3 +43,7 @@ next-env.d.ts
 
 # client Prisma généré
 /src/generated
+.neon
+
+# fichiers privés des livres (jamais publiés)
+/storage

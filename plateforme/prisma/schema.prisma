@@ -71,6 +71,7 @@ model User {
   subscriptions Subscription[]
   progress      Progress[]
   favorites     Favorite[]
+  bookmarks     Bookmark[]
 }
 
 // Appareil autorisé (section 13)
@@ -100,6 +101,7 @@ model Work {
   status      WorkStatus @default(DRAFT)
   access      AccessMode
   downloadable Boolean    @default(false)
+  fileKey     String? // clé du fichier du livre dans le stockage privé (storage/books)
   durationMin Int?
   pages       Int?
   publishedAt DateTime?
@@ -110,6 +112,7 @@ model Work {
   orders    Order[]
   progress  Progress[]
   favorites Favorite[]
+  bookmarks Bookmark[]
 
   @@index([type, status])
 }
@@ -181,6 +184,7 @@ model Progress {
   workId    String
   work      Work     @relation(fields: [workId], references: [id])
   position  Float // page ou seconde
+  locator   String? // repère exact de lecture (EPUB : CFI)
   updatedAt DateTime @updatedAt
 
   @@unique([userId, workId])
@@ -193,6 +197,22 @@ model Favorite {
   work   Work   @relation(fields: [workId], references: [id], onDelete: Cascade)
 
   @@id([userId, workId])
+}
+
+// Signet de lecture (section 9, L-06) : une position précise dans un livre
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workId    String
+  work      Work     @relation(fields: [workId], references: [id], onDelete: Cascade)
+  locator   String // repère exact (EPUB : CFI)
+  label     String?
+  percent   Float    @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, workId, locator])
+  @@index([userId, workId])
 }
 
 // Journal d'audit (sections 4.3 et 16)

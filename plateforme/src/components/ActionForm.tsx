@@ -19,14 +19,14 @@ export function ActionForm({
     <form action={formAction} className="flex flex-col gap-4">
       <ValuesContext value={state?.values}>{children}</ValuesContext>
       {state?.error && (
-        <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p role="alert" className="rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700 ring-1 ring-red-200">
           {state.error}
         </p>
       )}
       <button
         type="submit"
         disabled={pending}
-        className="h-11 rounded-md bg-[#14213D] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#1d3159] disabled:opacity-60"
+        className="btn btn-brand h-11 disabled:opacity-60"
       >
         {pending ? "Un instant…" : submitLabel}
       </button>
@@ -35,7 +35,7 @@ export function ActionForm({
 }
 
 const inputClass =
-  "h-11 rounded-md border border-zinc-300 bg-white px-3 text-base text-zinc-900 outline-none focus:border-[#14213D] focus:ring-2 focus:ring-[#14213D]/20";
+  "h-11 rounded-xl border border-line bg-paper/50 px-3.5 text-base text-ink outline-none transition focus:border-brand-light focus:bg-surface focus:ring-4 focus:ring-brand-light/15";
 
 export function Field({
   label,
@@ -54,7 +54,7 @@ export function Field({
 }) {
   const kept = useContext(ValuesContext);
   return (
-    <label className="flex flex-col gap-1 text-sm font-medium text-zinc-800">
+    <label className="flex flex-col gap-1 text-sm font-medium text-ink">
       {label}
       <input
         name={name}
@@ -63,7 +63,7 @@ export function Field({
         defaultValue={kept?.[name] ?? defaultValue}
         className={inputClass}
       />
-      {hint && <span className="text-xs font-normal text-zinc-500">{hint}</span>}
+      {hint && <span className="text-xs font-normal text-muted">{hint}</span>}
     </label>
   );
 }
@@ -79,7 +79,7 @@ export function SelectField({
 }) {
   const kept = useContext(ValuesContext);
   return (
-    <label className="flex flex-col gap-1 text-sm font-medium text-zinc-800">
+    <label className="flex flex-col gap-1 text-sm font-medium text-ink">
       {label}
       <select name={name} defaultValue={kept?.[name]} className={inputClass}>
         {options.map((o) => (
@@ -92,11 +92,52 @@ export function SelectField({
   );
 }
 
-export function CheckField({ label, name }: { label: string; name: string }) {
+export function CheckField({
+  label,
+  name,
+  defaultChecked = false,
+}: {
+  label: string;
+  name: string;
+  defaultChecked?: boolean;
+}) {
   const kept = useContext(ValuesContext);
+  const checked = kept ? kept[name] === "on" : defaultChecked;
   return (
     <label className="flex items-center gap-2 text-sm font-medium">
-      <input type="checkbox" name={name} defaultChecked={kept?.[name] === "on"} /> {label}
+      <input type="checkbox" name={name} defaultChecked={checked} className="size-4 accent-brand" /> {label}
     </label>
+  );
+}
+
+/** Plusieurs cases à cocher pour un même champ (ex. liste de pays). */
+export function CheckGroup({
+  label,
+  name,
+  options,
+  defaultValues = [],
+  hint,
+}: {
+  label: string;
+  name: string;
+  options: { value: string; label: string }[];
+  defaultValues?: string[];
+  hint?: string;
+}) {
+  const kept = useContext(ValuesContext);
+  const selected = new Set(kept ? (kept[name] ?? "").split(",").filter(Boolean) : defaultValues);
+  return (
+    <fieldset className="flex flex-col gap-2">
+      <legend className="text-sm font-medium text-ink">{label}</legend>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+        {options.map((o) => (
+          <label key={o.value} className="flex min-h-9 items-center gap-2 text-sm">
+            <input type="checkbox" name={name} value={o.value} defaultChecked={selected.has(o.value)} className="size-4 accent-brand" />
+            {o.label}
+          </label>
+        ))}
+      </div>
+      {hint && <span className="text-xs text-muted">{hint}</span>}
+    </fieldset>
   );
 }
