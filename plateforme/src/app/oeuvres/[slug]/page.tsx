@@ -5,6 +5,7 @@ import { Cover } from "@/components/Cover";
 import { Shelf } from "@/components/Shelf";
 import { Availability, WorkAction } from "@/components/WorkAction";
 import { COUNTRY_NAME } from "@/lib/countries";
+import { getActiveSubscription } from "@/lib/access";
 import { getCurrentUser } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { getCountry, isAvailable } from "@/lib/rights";
@@ -38,6 +39,7 @@ async function Work({ params }: { params: PageProps<"/oeuvres/[slug]">["params"]
   const owned = user
     ? !!(await db.order.findFirst({ where: { userId: user.id, workId: work.id, status: "PAID" }, select: { id: true } }))
     : false;
+  const subscribed = user ? !!(await getActiveSubscription(user.id)) : false;
   const price = priceFor(work.prices, country);
   const countries = [...new Set(work.licenses.flatMap((l) => l.countries))];
   const offline = work.licenses.some((l) => l.allowOffline);
@@ -82,12 +84,19 @@ async function Work({ params }: { params: PageProps<"/oeuvres/[slug]">["params"]
             <div className="mt-3">
               <WorkAction
                 workId={work.id}
+                type={work.type}
                 access={work.access}
                 signedIn={!!user}
                 country={country}
                 available={available}
                 owned={owned}
-                readHref={work.type === "BOOK" && work.fileKey && available ? `/lire/${work.slug}` : undefined}
+                subscribed={subscribed}
+                priceLabel={work.access === "PURCHASE" && price ? formatPrice(price) : null}
+                readHref={
+                  work.type === "BOOK" && work.fileKey && available && (owned || (subscribed && work.access === "SUBSCRIPTION"))
+                    ? `/lire/${work.slug}`
+                    : undefined
+                }
               />
             </div>
             <Availability country={country} available={available} />

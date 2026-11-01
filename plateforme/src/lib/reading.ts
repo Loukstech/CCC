@@ -1,11 +1,12 @@
 import "server-only";
+import { getWorkAccess } from "@/lib/access";
 import { db } from "@/lib/db";
 import type { CurrentUser } from "@/lib/dal";
 import { getCountry, isAvailable } from "@/lib/rights";
 
 export type ReadAccess =
   | { ok: true; work: { id: string; slug: string; title: string; author: string | null; fileKey: string } }
-  | { ok: false; reason: "not-found" | "not-owned" | "unavailable" | "no-file" };
+  | { ok: false; reason: "not-found" | "not-owned" | "unavailable" | "no-file" | "device" };
 
 /**
  * Règle unique d'accès à la lecture d'un livre : œuvre publiée, dans la bibliothèque de l'utilisateur,
@@ -15,6 +16,8 @@ export async function authorizeRead(
   user: CurrentUser,
   where: { id: string } | { slug: string },
 ): Promise<ReadAccess> {
+  if (!user.deviceOk) return { ok: false, reason: "device" };
+
   const work = await db.work.findFirst({
     where: { ...where, status: "PUBLISHED", type: "BOOK" },
     select: {
@@ -22,17 +25,15 @@ export async function authorizeRead(
       slug: true,
       title: true,
       author: true,
+      access: true,
       fileKey: true,
       licenses: { select: { countries: true, allowWeb: true, startsAt: true, endsAt: true } },
     },
   });
   if (!work) return { ok: false, reason: "not-found" };
 
-  const owned = await db.order.findFirst({
-    where: { userId: user.id, workId: work.id, status: "PAID" },
-    select: { id: true },
-  });
-  if (!owned) return { ok: false, reason: "not-owned" };
+  const access = await getWorkAccess(user.id, work);
+  if (!access.ok) return { ok: false, reason: "not-owned" };
 
   const country = await getCountry(user);
   if (!country || !isAvailable(work.licenses, country, new Date())) return { ok: false, reason: "unavailable" };

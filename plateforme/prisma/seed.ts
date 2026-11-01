@@ -71,6 +71,7 @@ async function main() {
       access: "PURCHASE",
       pages: 240,
       price: 3000,
+      fileKey: "demo-livre-histoire.epub",
     },
     {
       slug: "demo-livre-temoignages",
@@ -81,6 +82,7 @@ async function main() {
       access: "PURCHASE",
       pages: 180,
       price: 2500,
+      fileKey: "demo-livre-temoignages.epub",
     },
     {
       slug: "demo-livre-priere",
@@ -90,6 +92,7 @@ async function main() {
       description: "Recueil fictif de cantiques, gratuit, pour tester la rangée des contenus gratuits.",
       access: "FREE",
       pages: 64,
+      fileKey: "demo-livre-priere.epub",
     },
     {
       slug: "demo-documentaire-histoire",
@@ -164,6 +167,7 @@ async function main() {
       access: "PURCHASE",
       pages: 150,
       price: 2000,
+      fileKey: "demo-livre-vivre.epub",
     },
   ];
 
@@ -178,6 +182,23 @@ async function main() {
         licenses: { create: { countries: ["BJ", "TG", "FR"], contractRef: "DEMO-000" } },
         ...(price ? { prices: { create: { country: "BJ", currency: "XOF", amount: price } } } : {}),
       },
+    });
+  }
+
+  // Prix d'abonnement de démonstration (valeurs d'exemple : à fixer après enquête, voir cahier des charges 24).
+  const plans = [
+    { plan: "MONTHLY" as const, country: "BJ", currency: "XOF", amount: 2000 },
+    { plan: "YEARLY" as const, country: "BJ", currency: "XOF", amount: 20000 },
+    { plan: "MONTHLY" as const, country: "TG", currency: "XOF", amount: 2000 },
+    { plan: "YEARLY" as const, country: "TG", currency: "XOF", amount: 20000 },
+    { plan: "MONTHLY" as const, country: "FR", currency: "EUR", amount: 499 },
+    { plan: "YEARLY" as const, country: "FR", currency: "EUR", amount: 4990 },
+  ];
+  for (const p of plans) {
+    await db.planPrice.upsert({
+      where: { plan_country: { plan: p.plan, country: p.country } },
+      update: {},
+      create: p,
     });
   }
 

@@ -23,6 +23,8 @@ async function Reader({ params }: { params: PageProps<"/lire/[slug]">["params"] 
   const access = await authorizeRead(user, { slug });
   if (!access.ok) {
     if (access.reason === "not-found") notFound();
+    // Limite d'appareils atteinte : la page du compte permet d'en retirer un.
+    if (access.reason === "device") redirect("/compte?appareils=limite");
     // Pas dans la bibliothèque, pays non autorisé ou fichier absent : la fiche explique pourquoi.
     redirect(`/oeuvres/${slug}`);
   }

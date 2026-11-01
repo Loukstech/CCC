@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/password";
+import { registerDevice } from "@/lib/devices";
 import { createSession, deleteSession } from "@/lib/session";
 import { keep, type FormState } from "@/lib/form";
 
@@ -27,7 +28,8 @@ export async function signup(_: FormState, formData: FormData): Promise<FormStat
     data: { name, email, country, passwordHash: await hashPassword(password) },
     select: { id: true },
   });
-  await createSession(user.id);
+  const device = await registerDevice(user.id);
+  await createSession(user.id, device.ok ? device.deviceId : null);
   redirect("/");
 }
 
@@ -37,15 +39,18 @@ export async function login(_: FormState, formData: FormData): Promise<FormState
 
   const user = await db.user.findUnique({
     where: { email },
-    select: { id: true, passwordHash: true, disabledAt: true },
+    select: { id: true, passwordHash: true, disabledAt: true, staffRole: true },
   });
   const ok = await verifyPassword(password, user?.passwordHash ?? null);
   if (!user || !ok || user.disabledAt) {
     return { error: "E-mail ou mot de passe incorrect.", values: keep(formData, ["email"]) };
   }
 
-  await createSession(user.id);
-  redirect("/");
+  // Appareil : enregistré s'il reste une place. Sinon la session est ouverte sans appareil autorisé et l'on
+  // est envoyé vers « Mon compte » pour en retirer un (sauf le personnel, non soumis à la limite).
+  const device = await registerDevice(user.id);
+  await createSession(user.id, device.ok ? device.deviceId : null);
+  redirect(device.ok || user.staffRole ? "/" : "/compte?appareils=limite");
 }
 
 export async function logout() {

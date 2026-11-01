@@ -39,7 +39,7 @@ async function Items() {
     orderBy: { paidAt: "desc" },
     select: { work: { select: publicSelect } },
   });
-  const items = orders.map((o) => toCard(o.work));
+  const items = orders.flatMap((o) => (o.work ? [toCard(o.work)] : []));
 
   if (items.length === 0) {
     return (

@@ -1,35 +1,61 @@
 import Link from "next/link";
 import { addToLibrary } from "@/app/actions/library";
 import { setCountry } from "@/app/actions/country";
+import { startPurchase } from "@/app/actions/payments";
 import { COUNTRIES, COUNTRY_NAME } from "@/lib/countries";
 
 type Props = {
   workId: string;
+  type: "BOOK" | "FILM" | "DOCUMENTARY";
   access: "FREE" | "PURCHASE" | "SUBSCRIPTION";
   signedIn: boolean;
   country: string | null;
   available: boolean;
   owned: boolean;
+  subscribed: boolean;
+  /** Prix à afficher sur le bouton d'achat (pays de l'utilisateur). */
+  priceLabel: string | null;
   readHref?: string;
+  watchHref?: string;
 };
 
 const disabled = "btn btn-primary h-auto min-h-11 w-full cursor-not-allowed py-2.5 text-center opacity-50 sm:w-auto";
+const badge =
+  "inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500/15 px-4 text-sm font-semibold text-emerald-300 ring-1 ring-emerald-400/40";
 
-/** Bouton d'action de la fiche : selon le compte, le pays (droits) et ce que l'on possède déjà. */
-export function WorkAction({ workId, access, signedIn, country, available, owned, readHref }: Props) {
-  if (owned) {
+/** Bouton d'action de la fiche : selon le compte, le pays (droits), l'achat ou l'abonnement. */
+export function WorkAction({
+  workId,
+  type,
+  access,
+  signedIn,
+  country,
+  available,
+  owned,
+  subscribed,
+  priceLabel,
+  readHref,
+  watchHref,
+}: Props) {
+  const included = !owned && subscribed && access === "SUBSCRIPTION" && available;
+  if (owned || included) {
+    const open = readHref ?? watchHref;
     return (
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        {readHref && (
-          <Link href={readHref} className="btn btn-primary w-full sm:w-auto">
-            Lire
+        {open ? (
+          <Link href={open} className="btn btn-primary w-full sm:w-auto">
+            {readHref ? "Lire" : "Regarder"}
           </Link>
+        ) : (
+          type !== "BOOK" && (
+            <button type="button" disabled className={disabled}>
+              Lecteur vidéo : bientôt disponible
+            </button>
+          )
         )}
-        <span className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500/15 px-4 text-sm font-semibold text-emerald-300 ring-1 ring-emerald-400/40">
-          ✓ Dans votre bibliothèque
-        </span>
-        <Link href="/bibliotheque" className="btn btn-ghost w-full sm:w-auto">
-          Ma bibliothèque
+        <span className={badge}>{owned ? "✓ Dans votre bibliothèque" : "✓ Inclus dans votre abonnement"}</span>
+        <Link href={owned ? "/bibliotheque" : "/compte"} className="btn btn-ghost w-full sm:w-auto">
+          {owned ? "Ma bibliothèque" : "Mon abonnement"}
         </Link>
       </div>
     );
@@ -68,10 +94,42 @@ export function WorkAction({ workId, access, signedIn, country, available, owned
     );
   }
 
+  if (access === "PURCHASE") {
+    if (!signedIn) {
+      return (
+        <Link href="/connexion" className="btn btn-primary w-full sm:w-auto">
+          Se connecter pour acheter
+        </Link>
+      );
+    }
+    if (!country) {
+      return (
+        <button type="button" disabled className={disabled}>
+          Choisissez votre pays ci-dessous
+        </button>
+      );
+    }
+    if (!priceLabel) {
+      return (
+        <button type="button" disabled className={disabled}>
+          Prix à venir pour votre pays
+        </button>
+      );
+    }
+    return (
+      <form action={startPurchase}>
+        <input type="hidden" name="workId" value={workId} />
+        <button type="submit" className="btn btn-primary w-full sm:w-auto">
+          Acheter · {priceLabel}
+        </button>
+      </form>
+    );
+  }
+
   return (
-    <button type="button" disabled className={disabled}>
-      {access === "PURCHASE" ? "Achat : bientôt disponible" : "Abonnement : bientôt disponible"}
-    </button>
+    <Link href="/abonnement" className="btn btn-primary w-full sm:w-auto">
+      S’abonner pour accéder
+    </Link>
   );
 }
 

@@ -63,12 +63,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 <li><Link href="/livres" className="hover:text-gold">Livres</Link></li>
                 <li><Link href="/documentaires" className="hover:text-gold">Documentaires</Link></li>
                 <li><Link href="/films" className="hover:text-gold">Films</Link></li>
+                <li><Link href="/abonnement" className="hover:text-gold">Abonnement</Link></li>
                 <li><Link href="/recherche" className="hover:text-gold">Recherche</Link></li>
               </ul>
             </nav>
             <nav aria-label="Mon compte">
               <p className="text-sm font-semibold text-white">Mon compte</p>
               <ul className="mt-3 space-y-2 text-sm">
+                <li><Link href="/compte" className="hover:text-gold">Mon compte</Link></li>
                 <li><Link href="/connexion" className="hover:text-gold">Connexion</Link></li>
                 <li><Link href="/inscription" className="hover:text-gold">Créer un compte</Link></li>
               </ul>

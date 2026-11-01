@@ -1,0 +1,60 @@
+import "server-only";
+import { db } from "@/lib/db";
+
+function addPeriod(from: Date, plan: "MONTHLY" | "YEARLY") {
+  const d = new Date(from);
+  if (plan === "MONTHLY") d.setUTCMonth(d.getUTCMonth() + 1);
+  else d.setUTCFullYear(d.getUTCFullYear() + 1);
+  return d;
+}
+
+/**
+ * Valide une commande payée. Peut être appelée plusieurs fois pour la même commande (le prestataire peut
+ * confirmer deux fois) : seule la première passe de « en attente » à « payée » compte, donc aucun double effet.
+ * Pour un abonnement, la période s'ajoute à la fin de l'abonnement en cours s'il y en a un.
+ */
+export async function markOrderPaid(orderId: string, providerRef?: string): Promise<boolean> {
+  return db.$transaction(async (tx) => {
+    const claimed = await tx.order.updateMany({
+      where: { id: orderId, status: "PENDING" },
+      data: { status: "PAID", paidAt: new Date(), ...(providerRef ? { providerRef } : {}) },
+    });
+    if (claimed.count !== 1) return false;
+
+    const order = await tx.order.findUniqueOrThrow({
+      where: { id: orderId },
+      select: { userId: true, plan: true, provider: true },
+    });
+    if (order.plan) {
+      const now = new Date();
+      const current = await tx.subscription.findFirst({
+        where: { userId: order.userId, status: { in: ["ACTIVE", "CANCELED"] }, endsAt: { gt: now } },
+        orderBy: { endsAt: "desc" },
+        select: { id: true, endsAt: true },
+      });
+      if (current) {
+        await tx.subscription.update({
+          where: { id: current.id },
+          data: { endsAt: addPeriod(current.endsAt, order.plan), status: "ACTIVE", plan: order.plan },
+        });
+      } else {
+        await tx.subscription.create({
+          data: {
+            userId: order.userId,
+            plan: order.plan,
+            status: "ACTIVE",
+            startsAt: now,
+            endsAt: addPeriod(now, order.plan),
+            provider: order.provider,
+          },
+        });
+      }
+    }
+    return true;
+  });
+}
+
+export async function markOrderFailed(orderId: string): Promise<boolean> {
+  const res = await db.order.updateMany({ where: { id: orderId, status: "PENDING" }, data: { status: "FAILED" } });
+  return res.count === 1;
+}

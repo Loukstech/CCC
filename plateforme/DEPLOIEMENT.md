@@ -45,16 +45,28 @@ Chaque modification poussée sur GitHub redéploie automatiquement le site.
 4. **Créer un compte** (pays : Bénin), ouvrir « Prières du matin (démo) », **Ajouter gratuitement**, puis **Lire**.
    Tourner les pages, régler le texte, poser un **signet**, quitter, rouvrir : retour à la bonne page.
 5. **Ma bibliothèque** : « Continuer la lecture ».
-6. **Droits par pays** : sur une fiche, choisir « États-Unis » : l'œuvre n'est plus disponible.
-7. **Administration** (compte administrateur) : « Gérer » une œuvre : droits par pays, prix par pays.
+6. **Achat** : ouvrir « Les chemins de la foi (démo) » (3 000 F CFA pour le Bénin, 4,99 € pour la France),
+   **Acheter**, puis « Payer (simulation) » sur la page de démonstration, puis **Lire**. Essayer aussi « Simuler un échec ».
+7. **Abonnement** : page « Abonnement » (menu du pied de page) : choisir mensuel ou annuel, payer en simulation,
+   puis ouvrir un documentaire : « Inclus dans votre abonnement ». Résilier depuis « Mon compte » : l'accès reste
+   ouvert jusqu'à la fin de la période payée.
+8. **Appareils** : « Mon compte » > « Mes appareils » (3 maximum). Se connecter depuis un 4e navigateur : la lecture est
+   bloquée jusqu'à ce qu'on retire un appareil.
+9. **Droits par pays** : sur une fiche, choisir « États-Unis » : l'œuvre n'est plus disponible.
+10. **Administration** (compte administrateur) : « Gérer » une œuvre : droits par pays, prix par pays.
 
 ## Ce qui ne fonctionne pas encore en ligne
 
+- **Paiement réel** : le paiement est une **simulation** (aucune somme débitée, page marquée « Mode démonstration »).
+  Le jour où le prestataire est choisi (FedaPay recommandé), on ajoute son adaptateur dans `src/lib/payments/` et on
+  règle la variable `PAYMENT_PROVIDER` ; le reste du parcours ne change pas.
+- **Abonnement** : la période se prolonge à la main (pas de prélèvement automatique).
 - **Envoi de fichiers de livres** depuis l'administration : les fonctions Vercel n'ont pas de disque inscriptible.
-  Le livre de démonstration est inclus dans le déploiement ; pour de vrais livres, il faudra brancher un stockage
+  Les livres de démonstration sont inclus dans le déploiement ; pour de vrais livres, il faudra brancher un stockage
   (fonctions `readBookFile` et `saveBookFile` dans `src/lib/storage.ts`).
-- **Achat et abonnement** : boutons désactivés (prestataire de paiement à choisir).
-- **Lecture hors connexion**, lecteur vidéo, appareils autorisés, mot de passe oublié : pas encore faits.
+- **Pas encore faits** : lecture hors connexion, lecteur vidéo, mot de passe oublié, double authentification du personnel.
+- **Sessions ouvertes avant la limite d'appareils** : un lecteur déjà connecté voit un bouton « Autoriser cet appareil »
+  dans « Mon compte » (ou se reconnecte).
 - Le site est volontairement **non indexé** par les moteurs de recherche (`src/app/robots.ts` et `metadata.robots`).
   À retirer au lancement.
 

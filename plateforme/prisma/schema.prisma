@@ -150,8 +150,9 @@ model Order {
   id        String      @id @default(cuid())
   userId    String
   user      User        @relation(fields: [userId], references: [id])
-  workId    String
-  work      Work        @relation(fields: [workId], references: [id])
+  workId    String? // vide pour une commande d'abonnement
+  work      Work?       @relation(fields: [workId], references: [id], onDelete: Restrict)
+  plan      Plan? // renseigné pour une commande d'abonnement
   status    OrderStatus @default(PENDING)
   currency  String
   amount    Int
@@ -213,6 +214,17 @@ model Bookmark {
 
   @@unique([userId, workId, locator])
   @@index([userId, workId])
+}
+
+// Prix des abonnements par pays (section 11) ; le montant est dans la plus petite unité de la devise
+model PlanPrice {
+  id       String @id @default(cuid())
+  plan     Plan
+  country  String
+  currency String
+  amount   Int
+
+  @@unique([plan, country])
 }
 
 // Journal d'audit (sections 4.3 et 16)

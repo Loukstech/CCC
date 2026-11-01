@@ -43,16 +43,16 @@ async function UserNav() {
           Administration
         </Link>
       )}
-      <span className="hdr-muted mx-1 hidden items-center gap-2 text-sm text-muted lg:flex">
+      <Link href="/compte" aria-label="Mon compte" className="hdr-muted mx-1 flex items-center gap-2 text-sm text-muted">
         <span
           aria-hidden
-          className="grid size-8 place-items-center rounded-full bg-brand text-xs font-semibold text-white"
+          className="grid size-9 place-items-center rounded-full bg-brand text-xs font-semibold text-white"
         >
           {(user.name ?? user.email ?? "?").charAt(0).toUpperCase()}
         </span>
-        {user.name ?? user.email}
-      </span>
-      <form action={logout}>
+        <span className="hidden max-w-32 truncate lg:inline">{user.name ?? user.email}</span>
+      </Link>
+      <form action={logout} className="hidden sm:block">
         <button type="submit" className={link}>
           Déconnexion
         </button>
