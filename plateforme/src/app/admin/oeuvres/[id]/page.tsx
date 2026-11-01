@@ -136,7 +136,7 @@ async function Manage({
                   name="videoKey"
                   required={false}
                   defaultValue={work.fileKey ?? ""}
-                  hint="Chez le prestataire vidéo choisi. En démonstration : nom d’un fichier du dossier public/demo-video (ex. demo-film-1.mp4)."
+                  hint="Mux : l’identifiant de lecture (Playback ID, vidéo à lecture signée). Démonstration : nom d’un fichier du dossier public/demo-video (ex. demo-film-1.mp4)."
                 />
               </ActionForm>
             </div>

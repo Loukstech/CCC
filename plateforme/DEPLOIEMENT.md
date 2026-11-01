@@ -70,6 +70,18 @@ Chaque modification poussée sur GitHub redéploie automatiquement le site.
 - Le site est volontairement **non indexé** par les moteurs de recherche (`src/app/robots.ts` et `metadata.robots`).
   À retirer au lancement.
 
+## Vidéo réelle avec Mux (offre gratuite pour essayer)
+
+1. Mux > **Settings > Signing Keys > Generate new key** : notez l'identifiant de la clé et la clé privée (base64, affichée une seule fois).
+2. Mux > **Video > Upload** : téléverser un fichier (par exemple `plateforme/public/demo-video/demo-film-1.mp4`), avec la
+   politique de lecture **Signed**. Quand la vidéo est prête, copier son **Playback ID**.
+3. Dans `plateforme/.env` (et dans les variables de Vercel) : `MUX_SIGNING_KEY_ID` et `MUX_SIGNING_PRIVATE_KEY`.
+4. Administration > « Gérer » le film > **Identifiant de la vidéo** : coller le Playback ID.
+5. Se connecter avec un compte abonné : « Regarder ». Le lecteur reçoit une adresse signée et ajuste la qualité à la connexion.
+
+Une clé qui se termine par `.mp4` reste une vidéo de démonstration : les deux types peuvent coexister.
+Ne collez jamais la clé privée dans un message ou un dépôt.
+
 ## Quand ce sera pour de vrai
 
 Créer une branche Neon séparée pour la production (ne pas partager la base de démonstration), un domaine à

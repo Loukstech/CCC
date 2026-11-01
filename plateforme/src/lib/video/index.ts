@@ -1,5 +1,6 @@
 import "server-only";
 import { basename } from "node:path";
+import { mux } from "@/lib/video/mux";
 
 export type Playback = {
   url: string;
@@ -29,10 +30,16 @@ const demo: VideoProvider = {
   },
 };
 
-const PROVIDERS: Record<string, VideoProvider> = { demo };
+const PROVIDERS: Record<string, VideoProvider> = { demo, mux };
 
-export function getVideoProvider(): VideoProvider {
-  const id = process.env.VIDEO_PROVIDER ?? "demo";
+/**
+ * Prestataire d'une vidéo, selon sa clé : un nom de fichier `.mp4` est une vidéo de démonstration ;
+ * toute autre clé est un identifiant du prestataire configuré (VIDEO_PROVIDER, Mux par défaut).
+ * Les deux peuvent donc coexister pendant la transition.
+ */
+export function getVideoProvider(fileKey: string): VideoProvider {
+  if (/\.mp4$/i.test(fileKey)) return demo;
+  const id = process.env.VIDEO_PROVIDER ?? "mux";
   const provider = PROVIDERS[id];
   if (!provider) throw new Error(`Prestataire vidéo inconnu : ${id}`);
   return provider;

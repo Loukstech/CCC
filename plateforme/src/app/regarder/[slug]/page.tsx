@@ -33,7 +33,7 @@ async function Watch({ params }: { params: PageProps<"/regarder/[slug]">["params
   }
 
   const [playback, progress, work] = await Promise.all([
-    getVideoProvider().getPlayback(access.work.fileKey, { userId: user.id }),
+    getVideoProvider(access.work.fileKey).getPlayback(access.work.fileKey, { userId: user.id }),
     db.progress.findUnique({
       where: { userId_workId: { userId: user.id, workId: access.work.id } },
       select: { position: true, locator: true },
