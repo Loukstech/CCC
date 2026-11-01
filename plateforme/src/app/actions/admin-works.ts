@@ -2,7 +2,8 @@
 
 import { revalidatePath, updateTag } from "next/cache";
 import { currencyOf, isCountryCode, toMinorUnits } from "@/lib/countries";
-import { PRICE_ROLES, RIGHTS_ROLES, requireStaff } from "@/lib/dal";
+import { FILE_ROLES, PRICE_ROLES, RIGHTS_ROLES, requireStaff } from "@/lib/dal";
+import { isVideoKey } from "@/lib/video";
 import { db } from "@/lib/db";
 import { WORKS_TAG } from "@/lib/catalog";
 import type { FormState } from "@/lib/form";
@@ -94,6 +95,24 @@ export async function savePrice(_: FormState, formData: FormData): Promise<FormS
   await db.auditLog.create({
     data: { actorId: user.id, action: "work.price", target: workId, details: { country, currency, amount: minor } },
   });
+  refresh(workId);
+  return undefined;
+}
+
+/** Identifiant de la vidéo d'un film ou documentaire (chez le prestataire vidéo). */
+export async function saveVideoKey(_: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireStaff(FILE_ROLES);
+  const workId = String(formData.get("workId") ?? "");
+  const key = String(formData.get("videoKey") ?? "").trim();
+  const values = { videoKey: key };
+
+  if (key && !isVideoKey(key)) return { error: "Identifiant invalide : lettres, chiffres, points et tirets seulement.", values };
+  const work = await db.work.findUnique({ where: { id: workId }, select: { id: true, type: true } });
+  if (!work) return { error: "Œuvre introuvable.", values };
+  if (work.type === "BOOK") return { error: "Les livres utilisent un fichier EPUB.", values };
+
+  await db.work.update({ where: { id: workId }, data: { fileKey: key || null } });
+  await db.auditLog.create({ data: { actorId: user.id, action: "work.video", target: workId, details: { key } } });
   refresh(workId);
   return undefined;
 }

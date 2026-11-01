@@ -97,6 +97,11 @@ async function Work({ params }: { params: PageProps<"/oeuvres/[slug]">["params"]
                     ? `/lire/${work.slug}`
                     : undefined
                 }
+                watchHref={
+                  work.type !== "BOOK" && work.fileKey && available && (owned || (subscribed && work.access === "SUBSCRIPTION"))
+                    ? `/regarder/${work.slug}`
+                    : undefined
+                }
               />
             </div>
             <Availability country={country} available={available} />

@@ -61,6 +61,7 @@ async function main() {
       description: "Documentaire fictif sur les origines et les premiers pas d’une communauté chrétienne.",
       access: "SUBSCRIPTION",
       durationMin: 52,
+      fileKey: "exemple-documentaire.mp4",
     },
     {
       slug: "demo-livre-histoire",
@@ -102,6 +103,7 @@ async function main() {
       description: "Documentaire fictif sur l’histoire et la transmission au sein d’une Église.",
       access: "SUBSCRIPTION",
       durationMin: 74,
+      fileKey: "demo-documentaire-histoire.mp4",
     },
     {
       slug: "demo-documentaire-gratuit",
@@ -111,6 +113,7 @@ async function main() {
       description: "Documentaire gratuit fictif : portraits de fidèles, pour découvrir la plateforme.",
       access: "FREE",
       durationMin: 28,
+      fileKey: "demo-documentaire-gratuit.mp4",
     },
     {
       slug: "demo-film-1",
@@ -120,6 +123,7 @@ async function main() {
       description: "Film fictif inspiré d’une parabole, pour tester l’affichage des films.",
       access: "SUBSCRIPTION",
       durationMin: 98,
+      fileKey: "demo-film-1.mp4",
     },
     {
       slug: "demo-film-2",
@@ -130,6 +134,7 @@ async function main() {
       access: "PURCHASE",
       durationMin: 105,
       price: 2000,
+      fileKey: "demo-film-2.mp4",
     },
     {
       slug: "demo-film-3",
@@ -139,6 +144,7 @@ async function main() {
       description: "Film gratuit fictif : un voyage, une rencontre, une promesse.",
       access: "FREE",
       durationMin: 87,
+      fileKey: "demo-film-3.mp4",
     },
     {
       slug: "demo-film-4",
@@ -148,6 +154,7 @@ async function main() {
       description: "Film fictif sur une nuit de prière dans un village, pour tester l’abonnement.",
       access: "SUBSCRIPTION",
       durationMin: 112,
+      fileKey: "demo-film-4.mp4",
     },
     {
       slug: "demo-documentaire-chants",
@@ -157,6 +164,7 @@ async function main() {
       description: "Documentaire fictif sur la musique et le chant dans la vie d’une communauté.",
       access: "SUBSCRIPTION",
       durationMin: 46,
+      fileKey: "demo-documentaire-chants.mp4",
     },
     {
       slug: "demo-livre-vivre",

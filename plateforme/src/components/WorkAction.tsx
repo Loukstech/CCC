@@ -49,7 +49,7 @@ export function WorkAction({
         ) : (
           type !== "BOOK" && (
             <button type="button" disabled className={disabled}>
-              Lecteur vidéo : bientôt disponible
+              Vidéo bientôt disponible
             </button>
           )
         )}

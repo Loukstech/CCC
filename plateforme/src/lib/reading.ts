@@ -4,27 +4,32 @@ import { db } from "@/lib/db";
 import type { CurrentUser } from "@/lib/dal";
 import { getCountry, isAvailable } from "@/lib/rights";
 
+type WorkType = "BOOK" | "FILM" | "DOCUMENTARY";
+
 export type ReadAccess =
-  | { ok: true; work: { id: string; slug: string; title: string; author: string | null; fileKey: string } }
+  | { ok: true; work: { id: string; slug: string; title: string; author: string | null; type: WorkType; fileKey: string } }
   | { ok: false; reason: "not-found" | "not-owned" | "unavailable" | "no-file" | "device" };
 
 /**
- * Règle unique d'accès à la lecture d'un livre : œuvre publiée, dans la bibliothèque de l'utilisateur,
- * disponible dans son pays, avec un fichier. Utilisée par la page du lecteur ET par la route qui sert le fichier.
+ * Règle unique d'accès au contenu d'une œuvre (lecture d'un livre ou visionnage d'une vidéo) : appareil autorisé,
+ * œuvre publiée, achetée ou comprise dans l'abonnement, disponible dans le pays de l'utilisateur, avec un fichier.
+ * Utilisée par les pages ET par les routes qui servent les fichiers.
  */
-export async function authorizeRead(
+async function authorizeMedia(
   user: CurrentUser,
   where: { id: string } | { slug: string },
+  types: WorkType[],
 ): Promise<ReadAccess> {
   if (!user.deviceOk) return { ok: false, reason: "device" };
 
   const work = await db.work.findFirst({
-    where: { ...where, status: "PUBLISHED", type: "BOOK" },
+    where: { ...where, status: "PUBLISHED", type: { in: types } },
     select: {
       id: true,
       slug: true,
       title: true,
       author: true,
+      type: true,
       access: true,
       fileKey: true,
       licenses: { select: { countries: true, allowWeb: true, startsAt: true, endsAt: true } },
@@ -39,5 +44,14 @@ export async function authorizeRead(
   if (!country || !isAvailable(work.licenses, country, new Date())) return { ok: false, reason: "unavailable" };
 
   if (!work.fileKey) return { ok: false, reason: "no-file" };
-  return { ok: true, work: { id: work.id, slug: work.slug, title: work.title, author: work.author, fileKey: work.fileKey } };
+  return {
+    ok: true,
+    work: { id: work.id, slug: work.slug, title: work.title, author: work.author, type: work.type, fileKey: work.fileKey },
+  };
 }
+
+export const authorizeRead = (user: CurrentUser, where: { id: string } | { slug: string }) =>
+  authorizeMedia(user, where, ["BOOK"]);
+
+export const authorizeWatch = (user: CurrentUser, where: { id: string } | { slug: string }) =>
+  authorizeMedia(user, where, ["FILM", "DOCUMENTARY"]);

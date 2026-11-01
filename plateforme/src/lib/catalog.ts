@@ -103,6 +103,8 @@ export type CardItem = {
   isNew: boolean;
   /** Livre dont le fichier est disponible : il peut être ouvert dans le lecteur. */
   readable: boolean;
+  /** Film ou documentaire dont la vidéo est disponible : il peut être ouvert dans le lecteur vidéo. */
+  watchable: boolean;
 };
 
 type CardSource = Awaited<ReturnType<typeof getPublishedWorks>>[number];
@@ -126,5 +128,6 @@ export function toCard(w: CardSource, isNew = false): CardItem {
     meta,
     isNew,
     readable: w.type === "BOOK" && !!w.fileKey,
+    watchable: w.type !== "BOOK" && !!w.fileKey,
   };
 }

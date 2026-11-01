@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { deletePrice, savePrice, saveRights } from "@/app/actions/admin-works";
+import { deletePrice, savePrice, saveRights, saveVideoKey } from "@/app/actions/admin-works";
 import { ActionForm, CheckField, CheckGroup, Field, SelectField } from "@/components/ActionForm";
 import { COUNTRIES, COUNTRY_NAME, currencyOf } from "@/lib/countries";
 import { CATALOG_ROLES, FILE_ROLES, PRICE_ROLES, RIGHTS_ROLES, requireStaff } from "@/lib/dal";
@@ -118,6 +118,31 @@ async function Manage({
             <p className="mt-3 text-sm text-muted">Votre rôle ne permet pas d’envoyer de fichier.</p>
           )}
           <p className="mt-2 text-xs text-muted">Format EPUB, 50 Mo au maximum.</p>
+        </section>
+      )}
+
+      {work.type !== "BOOK" && (
+        <section className={card}>
+          <h2 className={h2}>Vidéo</h2>
+          <p className="mt-1 text-sm text-muted">
+            {work.fileKey ? "✓ Une vidéo est associée : les spectateurs autorisés peuvent la regarder." : "Aucune vidéo associée."}
+          </p>
+          {canFile ? (
+            <div className="mt-4">
+              <ActionForm action={saveVideoKey} submitLabel="Enregistrer">
+                <input type="hidden" name="workId" value={work.id} />
+                <Field
+                  label="Identifiant de la vidéo"
+                  name="videoKey"
+                  required={false}
+                  defaultValue={work.fileKey ?? ""}
+                  hint="Chez le prestataire vidéo choisi. En démonstration : nom d’un fichier du dossier public/demo-video (ex. demo-film-1.mp4)."
+                />
+              </ActionForm>
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-muted">Votre rôle ne permet pas de modifier la vidéo.</p>
+          )}
         </section>
       )}
 

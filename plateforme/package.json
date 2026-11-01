@@ -15,6 +15,7 @@
     "logos": "node scripts/build-logos.mjs",
     "admin:password": "tsx scripts/set-admin-password.ts",
     "demo:epub": "node scripts/make-demo-epub.mjs",
+    "demo:videos": "node scripts/make-demo-videos.mjs",
     "db:migrate": "prisma migrate dev",
     "db:up": "docker compose up -d"
   },
