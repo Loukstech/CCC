@@ -1,61 +1,75 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { Cover } from "@/components/Cover";
 import { HeroCarousel } from "@/components/HeroCarousel";
 import { ChevronIcon, DownloadIcon, HeadsetIcon, ShieldIcon, TypeIcon, WalletIcon } from "@/components/icons";
+import { PageFallback } from "@/components/PageFallback";
 import { getPublishedWorks, toCard, type CardItem } from "@/lib/catalog";
+import { t, type Key } from "@/lib/i18n";
+import { getLang } from "@/lib/lang";
 
-const BENEFITS = [
-  { icon: DownloadIcon, title: "Hors connexion", text: "Lisez sans réseau" },
-  { icon: WalletIcon, title: "Paiement simple", text: "Mobile Money, carte" },
-  { icon: ShieldIcon, title: "Achats conservés", text: "Sur tous vos appareils" },
-  { icon: HeadsetIcon, title: "Assistance", text: "En français" },
+const BENEFITS: { icon: typeof DownloadIcon; title: Key; text: Key }[] = [
+  { icon: DownloadIcon, title: "home.b1.title", text: "home.b1.text" },
+  { icon: WalletIcon, title: "home.b2.title", text: "home.b2.text" },
+  { icon: ShieldIcon, title: "home.b3.title", text: "home.b3.text" },
+  { icon: HeadsetIcon, title: "home.b4.title", text: "home.b4.text" },
 ];
 
 const SPACES = [
   {
     type: "BOOK",
     href: "/livres",
-    label: "Livres",
-    text: "À lire en ligne ou hors connexion",
+    label: "nav.books",
+    text: "home.space.BOOK",
     tone: "from-brand to-brand-deep",
   },
   {
     type: "DOCUMENTARY",
     href: "/documentaires",
-    label: "Documentaires",
-    text: "Histoire, témoignages, transmission",
+    label: "nav.docs",
+    text: "home.space.DOCUMENTARY",
     tone: "from-[#0e5a73] to-brand-deep",
   },
   {
     type: "FILM",
     href: "/films",
-    label: "Films",
-    text: "À regarder où que vous soyez",
+    label: "nav.films",
+    text: "home.space.FILM",
     tone: "from-[#2a2f6e] to-brand-night",
   },
-] as const;
+] as const satisfies readonly { type: string; href: string; label: Key; text: Key; tone: string }[];
 
-export default async function Home() {
+/** La langue vient d'un cookie : la page se charge derrière un cadre d'attente. */
+export default function Home() {
+  return (
+    <Suspense fallback={<PageFallback />}>
+      <HomeContent />
+    </Suspense>
+  );
+}
+
+async function HomeContent() {
+  const lang = await getLang();
   const works = await getPublishedWorks();
 
   if (works.length === 0) {
     return (
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-16 sm:px-5">
         <p className="rounded-2xl border border-dashed border-line bg-surface p-8 text-center text-muted">
-          Le catalogue est en préparation. Les premières œuvres arrivent bientôt.
+          {t(lang, "home.noCatalog")}
         </p>
       </main>
     );
   }
 
-  const items = works.map((w, i) => toCard(w, i < 3));
+  const items = works.map((w, i) => toCard(w, i < 3, lang));
   const byType = (t: CardItem["type"]) => items.filter((i) => i.type === t);
 
   return (
     <main className="flex-1">
       <HeroCarousel items={items.slice(0, 5)} />
 
-      <section aria-label="Nos engagements" className="relative z-10 mx-auto -mt-12 w-full max-w-6xl px-4 sm:px-5">
+      <section aria-label={t(lang, "home.benefits")} className="relative z-10 mx-auto -mt-12 w-full max-w-6xl px-4 sm:px-5">
         <ul className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-line shadow-xl shadow-brand/10 ring-1 ring-line lg:grid-cols-4">
           {BENEFITS.map(({ icon: Icon, title, text }) => (
             <li key={title} className="flex items-center gap-3 bg-surface p-4 sm:gap-4 sm:px-5 sm:py-5">
@@ -63,8 +77,8 @@ export default async function Home() {
                 <Icon className="size-5 sm:size-6" />
               </span>
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-ink sm:text-base">{title}</p>
-                <p className="text-xs text-muted sm:text-sm">{text}</p>
+                <p className="text-sm font-semibold text-ink sm:text-base">{t(lang, title)}</p>
+                <p className="text-xs text-muted sm:text-sm">{t(lang, text)}</p>
               </div>
             </li>
           ))}
@@ -73,7 +87,7 @@ export default async function Home() {
 
       <section aria-labelledby="espaces" className="mx-auto w-full max-w-6xl px-4 pt-10 sm:px-5 sm:pt-14">
         <h2 id="espaces" className="font-display text-2xl font-semibold text-brand sm:text-3xl">
-          Choisissez votre espace
+          {t(lang, "home.chooseSpace")}
         </h2>
         <span aria-hidden className="mt-2 block h-1 w-12 rounded-full bg-gold" />
 
@@ -89,11 +103,11 @@ export default async function Home() {
                   <div className="film-strip absolute inset-0 opacity-30" aria-hidden />
                   <div className="relative max-w-[60%]">
                     <TypeIcon type={type} className="size-7 text-gold" />
-                    <p className="font-display mt-2 text-2xl font-semibold">{label}</p>
-                    <p className="mt-0.5 text-sm text-white/70">{text}</p>
+                    <p className="font-display mt-2 text-2xl font-semibold">{t(lang, label)}</p>
+                    <p className="mt-0.5 text-sm text-white/70">{t(lang, text)}</p>
                   </div>
                   <span className="relative inline-flex items-center gap-1 text-sm font-semibold text-gold">
-                    {list.length} titre(s) · Explorer
+                    {t(lang, "home.titles", { n: list.length })}
                     <ChevronIcon className="size-4 transition-transform group-hover:translate-x-1" />
                   </span>
 
@@ -119,36 +133,35 @@ export default async function Home() {
         </ul>
       </section>
 
-      <section aria-label="Créer un compte" className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-5 sm:py-14">
+      <section aria-label={t(lang, "auth.signup")} className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-5 sm:py-14">
         <div className="hero-bg relative overflow-hidden rounded-3xl px-5 py-8 text-white sm:px-12 sm:py-10">
           <div className="film-strip absolute inset-y-0 right-0 w-1/2 opacity-30" aria-hidden />
           <div className="relative max-w-xl">
-            <p className="text-xs font-semibold tracking-[0.2em] text-gold uppercase">Compte gratuit</p>
+            <p className="text-xs font-semibold tracking-[0.2em] text-gold uppercase">{t(lang, "home.freeAccount")}</p>
             <h2 className="font-display mt-2 text-2xl font-semibold text-balance sm:text-4xl">
-              Votre bibliothèque et votre cinéma, toujours avec vous
+              {t(lang, "home.accountTitle")}
             </h2>
             <p className="mt-3 text-sm text-white/75 sm:text-base">
-              Créez un compte en une minute : retrouvez vos achats, votre progression et vos favoris sur tous vos
-              appareils.
+              {t(lang, "home.accountText")}
             </p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <Link href="/inscription" className="btn btn-primary w-full sm:w-auto">
-                Créer un compte
+                {t(lang, "auth.signup")}
               </Link>
               <Link href="/connexion" className="btn btn-ghost w-full sm:w-auto">
-                J’ai déjà un compte
+                {t(lang, "home.haveAccount")}
               </Link>
             </div>
           </div>
         </div>
       </section>
 
-      <section aria-label="Application mobile" className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-5 sm:pb-16">
+      <section aria-label={t(lang, "home.appAria")} className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-5 sm:pb-16">
         <div className="flex flex-col items-start justify-between gap-5 rounded-3xl border border-line bg-surface p-6 sm:flex-row sm:items-center sm:p-8">
           <div>
-            <h2 className="font-display text-xl font-semibold text-brand sm:text-2xl">L’application arrive bientôt</h2>
+            <h2 className="font-display text-xl font-semibold text-brand sm:text-2xl">{t(lang, "home.appTitle")}</h2>
             <p className="mt-1 max-w-lg text-sm text-muted sm:text-base">
-              CCC sera disponible sur Android et iPhone, avec le téléchargement protégé pour lire sans connexion.
+              {t(lang, "home.appText")}
             </p>
           </div>
           <div className="flex gap-3 text-sm font-semibold">

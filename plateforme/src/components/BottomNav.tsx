@@ -3,21 +3,22 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BookIcon, FilmIcon, GlobeIcon, HomeIcon, SearchIcon } from "@/components/icons";
+import { t, type Key, type Lang } from "@/lib/i18n";
 
-const TABS = [
-  { href: "/", label: "Accueil", icon: HomeIcon },
-  { href: "/livres", label: "Livres", icon: BookIcon },
-  { href: "/documentaires", label: "Documentaires", icon: GlobeIcon },
-  { href: "/films", label: "Films", icon: FilmIcon },
-  { href: "/recherche", label: "Recherche", icon: SearchIcon },
+const TABS: { href: string; label: Key; icon: typeof HomeIcon }[] = [
+  { href: "/", label: "nav.home", icon: HomeIcon },
+  { href: "/livres", label: "nav.books", icon: BookIcon },
+  { href: "/documentaires", label: "nav.docs", icon: GlobeIcon },
+  { href: "/films", label: "nav.films", icon: FilmIcon },
+  { href: "/recherche", label: "nav.search", icon: SearchIcon },
 ];
 
 /** Barre d'onglets fixée en bas de l'écran sur téléphone : accès au pouce aux grands espaces. */
-export function BottomNav() {
+export function BottomNav({ lang }: { lang: Lang }) {
   const pathname = usePathname();
   return (
     <nav
-      aria-label="Navigation principale"
+      aria-label={t(lang, "nav.main")}
       className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-paper/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg md:hidden"
     >
       <ul className="grid grid-cols-5">
@@ -34,7 +35,7 @@ export function BottomNav() {
               >
                 {active && <span aria-hidden className="absolute top-0 h-0.5 w-8 rounded-full bg-gold" />}
                 <Icon className="size-6" />
-                {label}
+                {t(lang, label)}
               </Link>
             </li>
           );

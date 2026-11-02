@@ -2,21 +2,25 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Cover } from "@/components/Cover";
+import { PageFallback } from "@/components/PageFallback";
 import { Shelf } from "@/components/Shelf";
 import { Availability, WorkAction } from "@/components/WorkAction";
-import { COUNTRY_NAME } from "@/lib/countries";
+import { countryName } from "@/lib/countries";
+import { t } from "@/lib/i18n";
+import { getLang } from "@/lib/lang";
 import { getActiveSubscription } from "@/lib/access";
 import { getCurrentUser } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { getCountry, isAvailable } from "@/lib/rights";
-import { ACCESS_LABEL, TYPE_LABEL, formatPrice, getPublishedWork, getPublishedWorks, priceFor, toCard } from "@/lib/catalog";
+import { Money } from "@/components/Money";
+import { getPublishedWork, getPublishedWorks, priceFor, toCard } from "@/lib/catalog";
 
 const UNIVERSE = { BOOK: "livre", FILM: "film", DOCUMENTARY: "doc" } as const;
 
 export default function WorkPage({ params }: PageProps<"/oeuvres/[slug]">) {
   return (
     <main className="flex-1">
-      <Suspense fallback={<p className="mx-auto w-full max-w-6xl px-4 py-16 text-muted sm:px-5">Chargement…</p>}>
+      <Suspense fallback={<PageFallback />}>
         <Work params={params} />
       </Suspense>
     </main>
@@ -25,13 +29,18 @@ export default function WorkPage({ params }: PageProps<"/oeuvres/[slug]">) {
 
 async function Work({ params }: { params: PageProps<"/oeuvres/[slug]">["params"] }) {
   const { slug } = await params;
+  const lang = await getLang();
   const work = await getPublishedWork(slug);
   if (!work) notFound();
 
-  const space = { BOOK: ["/livres", "livres"], FILM: ["/films", "films"], DOCUMENTARY: ["/documentaires", "documentaires"] }[work.type];
+  const space = {
+    BOOK: ["/livres", t(lang, "space.BOOK")],
+    FILM: ["/films", t(lang, "space.FILM")],
+    DOCUMENTARY: ["/documentaires", t(lang, "space.DOCUMENTARY")],
+  }[work.type];
   const related = (await getPublishedWorks())
     .filter((w) => w.type === work.type && w.id !== work.id)
-    .map((w) => toCard(w))
+    .map((w) => toCard(w, false, lang))
     .slice(0, 10);
   const user = await getCurrentUser();
   const country = await getCountry(user);
@@ -43,13 +52,14 @@ async function Work({ params }: { params: PageProps<"/oeuvres/[slug]">["params"]
   const price = priceFor(work.prices, country);
   const countries = [...new Set(work.licenses.flatMap((l) => l.countries))];
   const offline = work.licenses.some((l) => l.allowOffline);
-  const priceLabel = work.access === "PURCHASE" && price ? formatPrice(price) : ACCESS_LABEL[work.access];
+  const priceNode =
+    work.access === "PURCHASE" && price ? <Money amount={price.amount} currency={price.currency} lang={lang} /> : t(lang, `access.${work.access}` as const);
 
   const facts = [
-    { label: "Accès", value: priceLabel },
-    { label: "Langue", value: work.language.toUpperCase() },
-    { label: "Lecture hors ligne", value: offline ? "Autorisée" : "Non disponible" },
-    { label: "Disponible dans", value: countries.length ? countries.map((c) => COUNTRY_NAME[c] ?? c).join(", ") : "—" },
+    { label: t(lang, "work.access"), value: priceNode },
+    { label: t(lang, "work.language"), value: work.language.toUpperCase() },
+    { label: t(lang, "work.offline"), value: t(lang, offline ? "work.offlineYes" : "work.offlineNo") },
+    { label: t(lang, "work.availableIn"), value: countries.length ? countries.map((c) => countryName(c, lang)).join(", ") : "—" },
   ];
 
   return (
@@ -68,10 +78,10 @@ async function Work({ params }: { params: PageProps<"/oeuvres/[slug]">["params"]
           </div>
           <div className="rise" style={{ animationDelay: "100ms" }}>
             <Link href={space[0]} className="inline-block py-2 text-sm text-white/70 transition-colors hover:text-white">
-              ← Tous les {space[1]}
+              {t(lang, "work.back", { space: space[1] })}
             </Link>
             <p className="mt-5 text-xs font-semibold tracking-[0.2em] text-gold uppercase">
-              {TYPE_LABEL[work.type]}
+              {t(lang, `type.${work.type}` as const)}
             </p>
             <h1 className="font-display mt-2 text-3xl leading-tight font-semibold text-balance sm:text-5xl">
               {work.title}
@@ -80,9 +90,10 @@ async function Work({ params }: { params: PageProps<"/oeuvres/[slug]">["params"]
             {work.description && (
               <p className="mt-5 max-w-2xl leading-8 text-white/85">{work.description}</p>
             )}
-            <p className="font-display mt-6 text-2xl font-semibold text-gold">{priceLabel}</p>
+            <p className="font-display mt-6 text-2xl font-semibold text-gold">{priceNode}</p>
             <div className="mt-3">
               <WorkAction
+                lang={lang}
                 workId={work.id}
                 type={work.type}
                 access={work.access}
@@ -91,7 +102,7 @@ async function Work({ params }: { params: PageProps<"/oeuvres/[slug]">["params"]
                 available={available}
                 owned={owned}
                 subscribed={subscribed}
-                priceLabel={work.access === "PURCHASE" && price ? formatPrice(price) : null}
+                price={work.access === "PURCHASE" && price ? { amount: price.amount, currency: price.currency } : null}
                 readHref={
                   work.type === "BOOK" && work.fileKey && available && (owned || (subscribed && work.access === "SUBSCRIPTION"))
                     ? `/lire/${work.slug}`
@@ -104,13 +115,13 @@ async function Work({ params }: { params: PageProps<"/oeuvres/[slug]">["params"]
                 }
               />
             </div>
-            <Availability country={country} available={available} />
+            <Availability country={country} available={available} lang={lang} />
           </div>
         </div>
       </section>
 
       <section className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-5 sm:py-12">
-        <h2 className="font-display mb-5 text-2xl font-semibold text-brand">Informations</h2>
+        <h2 className="font-display mb-5 text-2xl font-semibold text-brand">{t(lang, "work.info")}</h2>
         <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {facts.map((f) => (
             <div key={f.label} className="rounded-2xl border border-line bg-surface p-5">
@@ -122,7 +133,7 @@ async function Work({ params }: { params: PageProps<"/oeuvres/[slug]">["params"]
       </section>
 
       {related.length > 0 && (
-        <Shelf title="À découvrir aussi" subtitle={`D’autres ${space[1]}`} items={related} />
+        <Shelf lang={lang} title={t(lang, "work.alsoTitle")} subtitle={t(lang, "work.alsoSub", { space: space[1] })} items={related} />
       )}
     </div>
   );

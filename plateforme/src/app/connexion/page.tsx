@@ -1,27 +1,41 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { ActionForm, Field } from "@/components/ActionForm";
 import { AuthShell } from "@/components/AuthShell";
+import { PageFallback } from "@/components/PageFallback";
 import { login } from "@/app/actions/auth";
+import { t } from "@/lib/i18n";
+import { getLang } from "@/lib/lang";
 
-export const metadata = { title: "Connexion — CCC" };
+export const metadata = { title: "CCC" };
 
 export default function LoginPage() {
   return (
+    <Suspense fallback={<PageFallback />}>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+async function LoginContent() {
+  const lang = await getLang();
+  return (
     <AuthShell
-      title="Bon retour"
-      subtitle="Connectez-vous pour retrouver votre bibliothèque."
+      lang={lang}
+      title={t(lang, "auth.welcomeTitle")}
+      subtitle={t(lang, "auth.welcomeSub")}
       footer={
         <>
-          Pas encore de compte ?{" "}
+          {t(lang, "auth.noAccount")}{" "}
           <Link href="/inscription" className="font-semibold text-brand underline-offset-4 hover:underline">
-            Créer un compte
+            {t(lang, "auth.signup")}
           </Link>
         </>
       }
     >
-      <ActionForm action={login} submitLabel="Se connecter">
-        <Field label="Adresse e-mail" name="email" type="email" />
-        <Field label="Mot de passe" name="password" type="password" />
+      <ActionForm action={login} lang={lang} submitLabel={t(lang, "auth.submitLogin")}>
+        <Field label={t(lang, "auth.email")} name="email" type="email" />
+        <Field label={t(lang, "auth.password")} name="password" type="password" />
       </ActionForm>
     </AuthShell>
   );

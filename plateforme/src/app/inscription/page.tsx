@@ -1,35 +1,50 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { ActionForm, Field, SelectField } from "@/components/ActionForm";
-import { COUNTRIES } from "@/lib/countries";
 import { AuthShell } from "@/components/AuthShell";
+import { PageFallback } from "@/components/PageFallback";
+import { COUNTRIES, countryName } from "@/lib/countries";
+import { t } from "@/lib/i18n";
+import { getLang } from "@/lib/lang";
 import { signup } from "@/app/actions/auth";
 
-export const metadata = { title: "Créer un compte — CCC" };
+export const metadata = { title: "CCC" };
 
 export default function SignupPage() {
   return (
+    <Suspense fallback={<PageFallback />}>
+      <SignupContent />
+    </Suspense>
+  );
+}
+
+async function SignupContent() {
+  const lang = await getLang();
+  return (
     <AuthShell
-      title="Rejoindre CCC"
-      subtitle="Un compte gratuit pour lire, regarder et télécharger."
+      lang={lang}
+      title={t(lang, "auth.joinTitle")}
+      subtitle={t(lang, "auth.joinSub")}
       footer={
         <>
-          Déjà inscrit ?{" "}
+          {t(lang, "auth.haveAccount")}{" "}
           <Link href="/connexion" className="font-semibold text-brand underline-offset-4 hover:underline">
-            Se connecter
+            {t(lang, "auth.login")}
           </Link>
         </>
       }
     >
-      <ActionForm action={signup} submitLabel="Créer mon compte">
-        <Field label="Nom" name="name" />
-        <Field label="Adresse e-mail" name="email" type="email" />
-        <Field label="Mot de passe" name="password" type="password" hint="8 caractères au minimum." />
+      <ActionForm action={signup} lang={lang} submitLabel={t(lang, "auth.submitSignup")}>
+        <Field label={t(lang, "auth.name")} name="name" />
+        <Field label={t(lang, "auth.email")} name="email" type="email" />
+        <Field label={t(lang, "auth.password")} name="password" type="password" hint={t(lang, "auth.passwordHint")} />
+        <Field label={t(lang, "auth.passwordConfirm")} name="passwordConfirm" type="password" />
         <SelectField
-          label="Pays"
+          label={t(lang, "auth.country")}
           name="country"
           options={[
-            { value: "", label: "Choisir mon pays" },
-            ...COUNTRIES.map((c) => ({ value: c.code, label: c.name })),
+            { value: "", label: t(lang, "auth.chooseCountry") },
+            ...COUNTRIES.map((c) => ({ value: c.code, label: countryName(c.code, lang) })),
           ]}
         />
       </ActionForm>

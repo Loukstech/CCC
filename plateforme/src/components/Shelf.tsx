@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { ChevronIcon } from "@/components/icons";
 import { WorkCard } from "@/components/WorkCard";
 import type { CardItem } from "@/lib/catalog";
+import { t, type Lang } from "@/lib/i18n";
 
 /** Rangée horizontale d'œuvres, avec flèches et défilement par cartes (comme les rangées d'une vidéothèque). */
 export function Shelf({
@@ -12,12 +13,14 @@ export function Shelf({
   subtitle,
   items,
   board = false,
+  lang,
 }: {
   id?: string;
   title: string;
   subtitle?: string;
   items: CardItem[];
   board?: boolean;
+  lang: Lang;
 }) {
   const track = useRef<HTMLUListElement>(null);
   const scroll = (dir: 1 | -1) =>
@@ -37,7 +40,7 @@ export function Shelf({
               key={d}
               type="button"
               onClick={() => scroll(d === "left" ? -1 : 1)}
-              aria-label={d === "left" ? `${title} : précédent` : `${title} : suivant`}
+              aria-label={t(lang, d === "left" ? "shelf.prev" : "shelf.next", { title })}
               className="grid size-10 place-items-center rounded-full border border-line bg-surface text-brand transition-colors hover:border-brand hover:bg-brand hover:text-white"
             >
               <ChevronIcon dir={d} />

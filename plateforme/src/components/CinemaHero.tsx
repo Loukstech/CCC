@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Backdrop } from "@/components/Backdrop";
 import { PlayIcon } from "@/components/icons";
+import { PriceLabel } from "@/components/Money";
 import type { CardItem } from "@/lib/catalog";
+import { t } from "@/lib/i18n";
 import { backdropUrl } from "@/lib/images";
 
 const DELAY_MS = 6500;
@@ -14,6 +16,7 @@ export function CinemaHero({ items }: { items: CardItem[] }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const count = items.length;
+  const ui = items[0]?.ui ?? "fr";
 
   useEffect(() => {
     if (paused || count < 2) return;
@@ -25,7 +28,7 @@ export function CinemaHero({ items }: { items: CardItem[] }) {
   return (
     <section
       aria-roledescription="carrousel"
-      aria-label="Films à la une"
+      aria-label={t(ui, "cinema.carousel")}
       className="relative isolate overflow-hidden bg-brand-night"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
@@ -38,7 +41,7 @@ export function CinemaHero({ items }: { items: CardItem[] }) {
             key={w.id}
             aria-hidden={i !== index}
             aria-roledescription="diapositive"
-            aria-label={`${i + 1} sur ${count}`}
+            aria-label={t(ui, "hero.slideOf", { i: i + 1, n: count })}
             className={`absolute inset-0 transition-opacity duration-700 ${
               i === index ? "opacity-100" : "pointer-events-none opacity-0"
             }`}
@@ -49,12 +52,15 @@ export function CinemaHero({ items }: { items: CardItem[] }) {
 
             <div className="relative mx-auto flex h-full w-full max-w-6xl flex-col justify-end px-4 pb-28 text-white sm:px-5 sm:pb-32">
               <ul className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-                <li className="rounded bg-gold px-2 py-0.5 tracking-wide text-brand-night uppercase">Film</li>
-                {[w.language, w.meta, w.free ? "Gratuit" : w.priceLabel].filter(Boolean).map((chip) => (
+                <li className="rounded bg-gold px-2 py-0.5 tracking-wide text-brand-night uppercase">{t(w.ui, "type.FILM")}</li>
+                {[w.language, w.meta].filter(Boolean).map((chip) => (
                   <li key={chip} className="rounded border border-white/30 px-2 py-0.5 text-white/90">
                     {chip}
                   </li>
                 ))}
+                <li className="rounded border border-white/30 px-2 py-0.5 text-white/90">
+                  <PriceLabel item={w} lang={w.ui} />
+                </li>
               </ul>
               <h1 className="mt-3 max-w-2xl text-4xl leading-[1.02] font-extrabold tracking-tight text-balance drop-shadow-lg sm:text-6xl">
                 {w.title}
@@ -69,7 +75,7 @@ export function CinemaHero({ items }: { items: CardItem[] }) {
                   className="btn btn-primary w-full sm:w-auto"
                 >
                   <PlayIcon />
-                  Regarder
+                  {t(w.ui, "cinema.watch")}
                 </Link>
               </div>
             </div>
@@ -81,7 +87,7 @@ export function CinemaHero({ items }: { items: CardItem[] }) {
         <div className="absolute inset-x-0 bottom-4 z-10 sm:bottom-6">
           <div
             role="tablist"
-            aria-label="Choisir un film"
+            aria-label={t(ui, "cinema.choose")}
             className="mx-auto flex w-full max-w-6xl gap-3 overflow-x-auto px-4 pb-1 sm:px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {items.map((w, i) => {
@@ -93,7 +99,7 @@ export function CinemaHero({ items }: { items: CardItem[] }) {
                   type="button"
                   role="tab"
                   aria-selected={active}
-                  aria-label={`Film ${i + 1} : ${w.title}`}
+                  aria-label={t(ui, "cinema.item", { i: i + 1, title: w.title })}
                   onClick={() => setIndex(i)}
                   className={`flex w-60 shrink-0 items-center gap-3 rounded-xl border p-2 pr-3 text-left text-white backdrop-blur-md transition-colors sm:w-64 ${
                     active ? "border-white/50 bg-black/55" : "border-white/15 bg-black/35 hover:bg-black/50"

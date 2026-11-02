@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { PlayIcon, TypeIcon } from "@/components/icons";
+import { PriceLabel } from "@/components/Money";
 import type { CardItem } from "@/lib/catalog";
+import { t } from "@/lib/i18n";
 import { backdropUrl } from "@/lib/images";
 
 /** Carte éditoriale paysage d'un documentaire : image large, durée, titre et résumé. */
@@ -37,12 +39,12 @@ export function DocCard({ w }: { w: CardItem }) {
         <div className="absolute top-3 left-3 flex gap-1.5">
           {w.isNew && (
             <span className="rounded bg-gold px-2 py-0.5 text-[10px] font-bold tracking-wide text-brand-night uppercase">
-              Nouveau
+              {t(w.ui, "card.new")}
             </span>
           )}
           {w.free && (
             <span className="rounded bg-white/95 px-2 py-0.5 text-[10px] font-bold tracking-wide text-brand uppercase">
-              Gratuit
+              {t(w.ui, "price.free")}
             </span>
           )}
         </div>
@@ -53,7 +55,11 @@ export function DocCard({ w }: { w: CardItem }) {
         </h3>
         {w.author && <p className="mt-0.5 text-xs font-semibold tracking-wide text-muted uppercase">{w.author}</p>}
         {w.description && <p className="mt-2 line-clamp-2 text-sm text-muted">{w.description}</p>}
-        {!w.free && <p className="mt-3 text-sm font-semibold text-brand">{w.priceLabel}</p>}
+        {!w.free && (
+          <p className="mt-3 text-sm font-semibold text-brand">
+            <PriceLabel item={w} lang={w.ui} />
+          </p>
+        )}
       </div>
     </Link>
   );

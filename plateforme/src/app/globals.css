@@ -296,3 +296,21 @@ div[data-universe] {
 .site-header[data-overlay]:not([data-scrolled]) .hdr-search-icon {
   color: rgb(255 255 255 / 0.85);
 }
+
+/* Arc-en-ciel de l'emblème de l'Église : sept couleurs, du rouge au violet. */
+:root {
+  --rainbow: linear-gradient(
+    90deg,
+    #e53935 0 14.28%,
+    #fb8c00 14.28% 28.57%,
+    #fdd835 28.57% 42.85%,
+    #43a047 42.85% 57.14%,
+    #1e88e5 57.14% 71.42%,
+    #3949ab 71.42% 85.71%,
+    #8e24aa 85.71% 100%
+  );
+}
+.rainbow-bar {
+  height: 4px;
+  background: var(--rainbow);
+}

@@ -1,6 +1,7 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/lib/db";
+import type { Lang } from "@/lib/i18n";
 
 export const WORKS_TAG = "works";
 
@@ -95,8 +96,12 @@ export type CardItem = {
   author: string | null;
   description: string | null;
   coverUrl: string | null;
-  typeLabel: string;
-  priceLabel: string;
+  /** Langue de l'interface : les composants d'affichage traduisent leurs textes avec elle. */
+  ui: Lang;
+  access: "FREE" | "PURCHASE" | "SUBSCRIPTION";
+  /** Prix à l'unité, dans la devise d'origine (plus petite unité) ; null si l'œuvre n'est pas à l'achat. */
+  priceAmount: number | null;
+  priceCurrency: string | null;
   free: boolean;
   language: string;
   meta: string | null;
@@ -110,7 +115,7 @@ export type CardItem = {
 type CardSource = Awaited<ReturnType<typeof getPublishedWorks>>[number];
 
 /** Version sérialisable d'une œuvre, prête à être passée aux composants d'affichage. */
-export function toCard(w: CardSource, isNew = false): CardItem {
+export function toCard(w: CardSource, isNew = false, ui: Lang = "fr"): CardItem {
   const price = w.prices[0];
   const meta = w.durationMin ? `${w.durationMin} min` : w.pages ? `${w.pages} pages` : null;
   return {
@@ -121,8 +126,10 @@ export function toCard(w: CardSource, isNew = false): CardItem {
     author: w.author,
     description: w.description,
     coverUrl: w.coverUrl,
-    typeLabel: TYPE_LABEL[w.type],
-    priceLabel: w.access === "PURCHASE" && price ? formatPrice(price) : ACCESS_LABEL[w.access],
+    ui,
+    access: w.access,
+    priceAmount: w.access === "PURCHASE" && price ? price.amount : null,
+    priceCurrency: w.access === "PURCHASE" && price ? price.currency : null,
     free: w.access === "FREE",
     language: w.language.toUpperCase(),
     meta,

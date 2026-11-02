@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import Image from "next/image";
-import Link from "next/link";
 import { Fraunces, Geist } from "next/font/google";
-import { BottomNav } from "@/components/BottomNav";
-import { ThemeSegment } from "@/components/ThemeToggle";
+import { BottomNavLoader } from "@/components/BottomNavLoader";
+import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import "./globals.css";
 
@@ -27,7 +25,7 @@ export const metadata: Metadata = {
 };
 
 // Pose le thème (choix enregistré, sinon thème de l'appareil) avant le premier affichage : pas de clignotement.
-const THEME_SCRIPT = `try{var m=localStorage.getItem("ccc-theme");var d=m==="dark"||(m!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.dataset.theme=d?"dark":"light"}catch(e){}`;
+const THEME_SCRIPT = `try{var m=localStorage.getItem("ccc-theme");var d=m==="dark"||(m!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.dataset.theme=d?"dark":"light";var c=document.cookie.match(/ccc_lang=(fr|en)/);document.documentElement.lang=c?c[1]:((navigator.language||"").toLowerCase().indexOf("en")===0?"en":"fr")}catch(e){}`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
@@ -41,54 +39,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </Suspense>
         <div className="flex flex-1 flex-col pb-16 md:pb-0">{children}</div>
         <Suspense fallback={null}>
-          <BottomNav />
+          <BottomNavLoader />
         </Suspense>
-        <footer className="bg-brand-night text-white/70">
-          <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-10 sm:px-5 sm:py-12 md:grid-cols-[1.4fr_1fr_1fr] md:gap-10">
-            <div>
-              <Image
-                src="/logo-white.png"
-                alt="CCC — Le savoir prend vie"
-                width={916}
-                height={582}
-                className="h-20 w-auto"
-              />
-              <p className="mt-4 max-w-sm text-sm leading-relaxed">
-                Lire des livres, regarder des documentaires et des films, où que vous soyez, même hors connexion.
-              </p>
-            </div>
-            <nav aria-label="Explorer">
-              <p className="text-sm font-semibold text-white">Explorer</p>
-              <ul className="mt-3 space-y-2 text-sm">
-                <li><Link href="/livres" className="hover:text-gold">Livres</Link></li>
-                <li><Link href="/documentaires" className="hover:text-gold">Documentaires</Link></li>
-                <li><Link href="/films" className="hover:text-gold">Films</Link></li>
-                <li><Link href="/abonnement" className="hover:text-gold">Abonnement</Link></li>
-                <li><Link href="/recherche" className="hover:text-gold">Recherche</Link></li>
-              </ul>
-            </nav>
-            <nav aria-label="Mon compte">
-              <p className="text-sm font-semibold text-white">Mon compte</p>
-              <ul className="mt-3 space-y-2 text-sm">
-                <li><Link href="/compte" className="hover:text-gold">Mon compte</Link></li>
-                <li><Link href="/connexion" className="hover:text-gold">Connexion</Link></li>
-                <li><Link href="/inscription" className="hover:text-gold">Créer un compte</Link></li>
-              </ul>
-            </nav>
-            <div className="md:col-span-3">
-              <p className="mb-2 text-sm font-semibold text-white">Affichage</p>
-              <ThemeSegment />
-            </div>
-          </div>
-          <div className="border-t border-white/10">
-            <p className="mx-auto w-full max-w-6xl px-4 py-5 text-xs text-white/50 sm:px-5">
-              © CCC — Lire · Regarder · Transmettre — version de démonstration · Photos d’illustration :{" "}
-              <a href="https://www.pexels.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-gold">
-                Pexels
-              </a>
-            </p>
-          </div>
-        </footer>
+        <Suspense fallback={null}>
+          <Footer />
+        </Suspense>
       </body>
     </html>
   );

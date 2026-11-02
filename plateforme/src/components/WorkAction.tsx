@@ -2,9 +2,12 @@ import Link from "next/link";
 import { addToLibrary } from "@/app/actions/library";
 import { setCountry } from "@/app/actions/country";
 import { startPurchase } from "@/app/actions/payments";
-import { COUNTRIES, COUNTRY_NAME } from "@/lib/countries";
+import { Money } from "@/components/Money";
+import { COUNTRIES, countryName } from "@/lib/countries";
+import { t, type Lang } from "@/lib/i18n";
 
 type Props = {
+  lang: Lang;
   workId: string;
   type: "BOOK" | "FILM" | "DOCUMENTARY";
   access: "FREE" | "PURCHASE" | "SUBSCRIPTION";
@@ -13,8 +16,8 @@ type Props = {
   available: boolean;
   owned: boolean;
   subscribed: boolean;
-  /** Prix à afficher sur le bouton d'achat (pays de l'utilisateur). */
-  priceLabel: string | null;
+  /** Prix du bouton d'achat (pays de l'utilisateur), dans sa devise d'origine. */
+  price: { amount: number; currency: string } | null;
   readHref?: string;
   watchHref?: string;
 };
@@ -25,6 +28,7 @@ const badge =
 
 /** Bouton d'action de la fiche : selon le compte, le pays (droits), l'achat ou l'abonnement. */
 export function WorkAction({
+  lang,
   workId,
   type,
   access,
@@ -33,7 +37,7 @@ export function WorkAction({
   available,
   owned,
   subscribed,
-  priceLabel,
+  price,
   readHref,
   watchHref,
 }: Props) {
@@ -44,18 +48,18 @@ export function WorkAction({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         {open ? (
           <Link href={open} className="btn btn-primary w-full sm:w-auto">
-            {readHref ? "Lire" : "Regarder"}
+            {t(lang, readHref ? "wa.read" : "wa.watch")}
           </Link>
         ) : (
           type !== "BOOK" && (
             <button type="button" disabled className={disabled}>
-              Vidéo bientôt disponible
+              {t(lang, "wa.videoSoon")}
             </button>
           )
         )}
-        <span className={badge}>{owned ? "✓ Dans votre bibliothèque" : "✓ Inclus dans votre abonnement"}</span>
+        <span className={badge}>{t(lang, owned ? "wa.inLibrary" : "wa.inSub")}</span>
         <Link href={owned ? "/bibliotheque" : "/compte"} className="btn btn-ghost w-full sm:w-auto">
-          {owned ? "Ma bibliothèque" : "Mon abonnement"}
+          {t(lang, owned ? "wa.myLibrary" : "wa.mySub")}
         </Link>
       </div>
     );
@@ -64,7 +68,7 @@ export function WorkAction({
   if (country && !available) {
     return (
       <button type="button" disabled className={disabled}>
-        Non disponible en {COUNTRY_NAME[country] ?? country}
+        {t(lang, "wa.notAvailableIn", { country: countryName(country, lang) })}
       </button>
     );
   }
@@ -73,14 +77,14 @@ export function WorkAction({
     if (!signedIn) {
       return (
         <Link href="/connexion" className="btn btn-primary w-full sm:w-auto">
-          Se connecter pour l’ajouter
+          {t(lang, "wa.signinAdd")}
         </Link>
       );
     }
     if (!country) {
       return (
         <button type="button" disabled className={disabled}>
-          Choisissez votre pays ci-dessous
+          {t(lang, "wa.chooseCountry")}
         </button>
       );
     }
@@ -88,7 +92,7 @@ export function WorkAction({
       <form action={addToLibrary}>
         <input type="hidden" name="workId" value={workId} />
         <button type="submit" className="btn btn-primary w-full sm:w-auto">
-          Ajouter gratuitement à ma bibliothèque
+          {t(lang, "wa.addFree")}
         </button>
       </form>
     );
@@ -98,21 +102,21 @@ export function WorkAction({
     if (!signedIn) {
       return (
         <Link href="/connexion" className="btn btn-primary w-full sm:w-auto">
-          Se connecter pour acheter
+          {t(lang, "wa.signinBuy")}
         </Link>
       );
     }
     if (!country) {
       return (
         <button type="button" disabled className={disabled}>
-          Choisissez votre pays ci-dessous
+          {t(lang, "wa.chooseCountry")}
         </button>
       );
     }
-    if (!priceLabel) {
+    if (!price) {
       return (
         <button type="button" disabled className={disabled}>
-          Prix à venir pour votre pays
+          {t(lang, "wa.priceSoon")}
         </button>
       );
     }
@@ -120,7 +124,7 @@ export function WorkAction({
       <form action={startPurchase}>
         <input type="hidden" name="workId" value={workId} />
         <button type="submit" className="btn btn-primary w-full sm:w-auto">
-          Acheter · {priceLabel}
+          {t(lang, "wa.buy")} · <Money amount={price.amount} currency={price.currency} lang={lang} />
         </button>
       </form>
     );
@@ -128,24 +132,24 @@ export function WorkAction({
 
   return (
     <Link href="/abonnement" className="btn btn-primary w-full sm:w-auto">
-      S’abonner pour accéder
+      {t(lang, "wa.subscribe")}
     </Link>
   );
 }
 
 /** Ligne d'état des droits (disponible ou non dans le pays) et choix du pays. */
-export function Availability({ country, available }: { country: string | null; available: boolean }) {
-  const name = country ? (COUNTRY_NAME[country] ?? country) : null;
+export function Availability({ country, available, lang }: { country: string | null; available: boolean; lang: Lang }) {
+  const name = country ? countryName(country, lang) : "";
   return (
     <div className="mt-5 text-sm">
       <p className={country ? (available ? "text-emerald-300" : "text-amber-300") : "text-white/80"}>
-        {!country && "Pays non déterminé : choisissez-le pour vérifier la disponibilité."}
-        {country && available && `✓ Disponible en ${name}`}
-        {country && !available && `Cette œuvre n’est pas disponible en ${name} (droits de diffusion).`}
+        {!country && t(lang, "av.unknown")}
+        {country && available && t(lang, "av.available", { name })}
+        {country && !available && t(lang, "av.notAvailable", { name })}
       </p>
       <form action={setCountry} className="mt-2 flex max-w-xs gap-2">
         <label className="sr-only" htmlFor="country">
-          Votre pays
+          {t(lang, "av.yourCountry")}
         </label>
         <select
           id="country"
@@ -153,15 +157,15 @@ export function Availability({ country, available }: { country: string | null; a
           defaultValue={country ?? ""}
           className="h-10 min-w-0 flex-1 rounded-lg border border-white/30 bg-white/10 px-3 text-base text-white backdrop-blur sm:text-sm [&>option]:text-ink"
         >
-          {!country && <option value="">Choisir mon pays</option>}
+          {!country && <option value="">{t(lang, "av.chooseMine")}</option>}
           {COUNTRIES.map((c) => (
             <option key={c.code} value={c.code}>
-              {c.name}
+              {countryName(c.code, lang)}
             </option>
           ))}
         </select>
         <button type="submit" className="h-10 rounded-lg border border-white/30 px-3 text-sm font-medium text-white hover:bg-white/10">
-          Changer
+          {t(lang, "av.change")}
         </button>
       </form>
     </div>

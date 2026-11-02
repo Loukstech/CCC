@@ -1,10 +1,14 @@
+import { t, type Lang } from "@/lib/i18n";
+
 /** Mise en page des écrans de connexion et d'inscription : panneau de marque + formulaire. */
 export function AuthShell({
+  lang,
   title,
   subtitle,
   children,
   footer,
 }: {
+  lang: Lang;
   title: string;
   subtitle: string;
   children: React.ReactNode;
@@ -15,12 +19,12 @@ export function AuthShell({
       <aside className="hero-bg relative hidden overflow-hidden text-white lg:flex lg:flex-col lg:justify-end lg:p-14">
         <div className="film-strip absolute inset-0 opacity-30" aria-hidden />
         <div className="relative">
-          <p className="text-xs font-semibold tracking-[0.2em] text-gold uppercase">Lire · Regarder · Transmettre</p>
+          <p className="text-xs font-semibold tracking-[0.2em] text-gold uppercase">{t(lang, "shell.kicker")}</p>
           <p className="font-display mt-4 max-w-md text-4xl leading-tight font-semibold">
-            Le savoir <em className="text-gold not-italic">prend vie</em>
+            {t(lang, "shell.l1")} <em className="text-gold not-italic">{t(lang, "shell.l2")}</em>
           </p>
           <p className="mt-4 max-w-sm text-white/70">
-            Votre bibliothèque et votre cinéma, toujours avec vous.
+            {t(lang, "shell.tag")}
           </p>
         </div>
       </aside>

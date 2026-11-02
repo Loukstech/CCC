@@ -4,15 +4,16 @@ import { useState } from "react";
 import { DocCard } from "@/components/DocCard";
 import { WorkCard } from "@/components/WorkCard";
 import type { CardItem } from "@/lib/catalog";
+import { t, type Lang } from "@/lib/i18n";
 
 const FILTERS = [
-  { value: "ALL", label: "Tout" },
-  { value: "FREE", label: "Gratuit" },
-  { value: "PAID", label: "Payant" },
+  { value: "ALL", label: "grid.all" },
+  { value: "FREE", label: "grid.free" },
+  { value: "PAID", label: "grid.paid" },
 ] as const;
 
 /** Grille d'un espace (livres, documentaires ou films) avec un filtre gratuit / payant. */
-export function SpaceGrid({ items, variant = "poster" }: { items: CardItem[]; variant?: "poster" | "landscape" }) {
+export function SpaceGrid({ items, lang, variant = "poster" }: { items: CardItem[]; lang: Lang; variant?: "poster" | "landscape" }) {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["value"]>("ALL");
   const shown = items.filter((i) => (filter === "ALL" ? true : filter === "FREE" ? i.free : !i.free));
 
@@ -20,7 +21,7 @@ export function SpaceGrid({ items, variant = "poster" }: { items: CardItem[]; va
     <>
       <div
         role="group"
-        aria-label="Filtrer"
+        aria-label={t(lang, "grid.filter")}
         className="-mx-4 mb-6 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden"
       >
         {FILTERS.map((f) => {
@@ -37,16 +38,16 @@ export function SpaceGrid({ items, variant = "poster" }: { items: CardItem[]; va
                   : "border border-line bg-surface text-ink/70 active:bg-brand/5"
               }`}
             >
-              {f.label}
+              {t(lang, f.label)}
             </button>
           );
         })}
-        <p className="ml-auto self-center pl-2 text-sm whitespace-nowrap text-muted">{shown.length} titre(s)</p>
+        <p className="ml-auto self-center pl-2 text-sm whitespace-nowrap text-muted">{t(lang, "grid.count", { n: shown.length })}</p>
       </div>
 
       {shown.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-line bg-surface p-8 text-center text-muted">
-          Rien ici pour le moment.
+          {t(lang, "grid.empty")}
         </p>
       ) : (
         <ul

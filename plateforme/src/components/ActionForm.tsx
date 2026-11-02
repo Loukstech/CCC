@@ -2,16 +2,19 @@
 
 import { createContext, useActionState, useContext } from "react";
 import type { FormState } from "@/lib/form";
+import { t, type Lang } from "@/lib/i18n";
 
 const ValuesContext = createContext<Record<string, string> | undefined>(undefined);
 
 export function ActionForm({
   action,
   submitLabel,
+  lang = "fr",
   children,
 }: {
   action: (state: FormState, formData: FormData) => Promise<FormState>;
   submitLabel: string;
+  lang?: Lang;
   children: React.ReactNode;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
@@ -28,7 +31,7 @@ export function ActionForm({
         disabled={pending}
         className="btn btn-brand h-11 disabled:opacity-60"
       >
-        {pending ? "Un instant…" : submitLabel}
+        {pending ? t(lang, "form.pending") : submitLabel}
       </button>
     </form>
   );
