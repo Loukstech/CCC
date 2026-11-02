@@ -227,6 +227,31 @@ model PlanPrice {
   @@unique([plan, country])
 }
 
+// Emplacements publicitaires (bandeaux). Les publicités sont gérées dans l'administration.
+enum AdPlacement {
+  HOME // bandeau de la page d'accueil
+  CATALOG // bandeau des pages Livres, Documentaires et Films
+  WORK // bandeau de la fiche d'une œuvre
+  STICKY // bandeau fixe en bas de l'écran, que l'on peut fermer
+}
+
+model Ad {
+  id         String      @id @default(cuid())
+  placement  AdPlacement
+  title      String
+  advertiser String
+  text       String?
+  imageUrl   String?
+  linkUrl    String
+  active     Boolean     @default(true)
+  startsAt   DateTime?
+  endsAt     DateTime?
+  clicks     Int         @default(0)
+  createdAt  DateTime    @default(now())
+
+  @@index([placement, active])
+}
+
 // Journal d'audit (sections 4.3 et 16)
 model AuditLog {
   id        String   @id @default(cuid())

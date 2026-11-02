@@ -2,9 +2,9 @@ import { setLang } from "@/app/actions/lang";
 import { LANGS, t, type Lang } from "@/lib/i18n";
 
 /** Bascule FR / EN : chaque bouton enregistre la langue dans un cookie, sans JavaScript nécessaire. */
-export function LanguageSwitch({ lang, className = "" }: { lang: Lang; className?: string }) {
+export function LanguageSwitch({ lang, className = "inline-flex" }: { lang: Lang; className?: string }) {
   return (
-    <form action={setLang} role="group" aria-label={t(lang, "lang.label")} className={`inline-flex rounded-full border border-line bg-surface p-0.5 ${className}`}>
+    <form action={setLang} role="group" aria-label={t(lang, "lang.label")} className={`rounded-full border border-line bg-surface p-0.5 ${className}`}>
       {LANGS.map((l) => (
         <button
           key={l}

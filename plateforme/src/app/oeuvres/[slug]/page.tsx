@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { AdSlot } from "@/components/AdSlot";
 import { Cover } from "@/components/Cover";
 import { PageFallback } from "@/components/PageFallback";
 import { Shelf } from "@/components/Shelf";
@@ -131,6 +132,8 @@ async function Work({ params }: { params: PageProps<"/oeuvres/[slug]">["params"]
           ))}
         </dl>
       </section>
+
+      <AdSlot placement="WORK" lang={lang} />
 
       {related.length > 0 && (
         <Shelf lang={lang} title={t(lang, "work.alsoTitle")} subtitle={t(lang, "work.alsoSub", { space: space[1] })} items={related} />

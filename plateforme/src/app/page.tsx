@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { Cover } from "@/components/Cover";
 import { HeroCarousel } from "@/components/HeroCarousel";
 import { ChevronIcon, DownloadIcon, HeadsetIcon, ShieldIcon, TypeIcon, WalletIcon } from "@/components/icons";
+import { AdSlot } from "@/components/AdSlot";
 import { PageFallback } from "@/components/PageFallback";
 import { getPublishedWorks, toCard, type CardItem } from "@/lib/catalog";
 import { t, type Key } from "@/lib/i18n";
@@ -132,6 +133,8 @@ async function HomeContent() {
           })}
         </ul>
       </section>
+
+      <AdSlot placement="HOME" lang={lang} />
 
       <section aria-label={t(lang, "auth.signup")} className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-5 sm:py-14">
         <div className="hero-bg relative overflow-hidden rounded-3xl px-5 py-8 text-white sm:px-12 sm:py-10">

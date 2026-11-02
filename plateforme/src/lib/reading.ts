@@ -7,7 +7,7 @@ import { getCountry, isAvailable } from "@/lib/rights";
 type WorkType = "BOOK" | "FILM" | "DOCUMENTARY";
 
 export type ReadAccess =
-  | { ok: true; work: { id: string; slug: string; title: string; author: string | null; type: WorkType; fileKey: string } }
+  | { ok: true; work: { id: string; slug: string; title: string; author: string | null; type: WorkType; fileKey: string; language: string } }
   | { ok: false; reason: "not-found" | "not-owned" | "unavailable" | "no-file" | "device" };
 
 /**
@@ -32,6 +32,7 @@ async function authorizeMedia(
       type: true,
       access: true,
       fileKey: true,
+      language: true,
       licenses: { select: { countries: true, allowWeb: true, startsAt: true, endsAt: true } },
     },
   });
@@ -46,7 +47,7 @@ async function authorizeMedia(
   if (!work.fileKey) return { ok: false, reason: "no-file" };
   return {
     ok: true,
-    work: { id: work.id, slug: work.slug, title: work.title, author: work.author, type: work.type, fileKey: work.fileKey },
+    work: { id: work.id, slug: work.slug, title: work.title, author: work.author, type: work.type, fileKey: work.fileKey, language: work.language },
   };
 }
 

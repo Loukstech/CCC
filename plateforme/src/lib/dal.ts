@@ -60,3 +60,6 @@ export const FILE_ROLES: StaffRole[] = ["SUPER_ADMIN", "EDITOR"];
 export const RIGHTS_ROLES: StaffRole[] = ["SUPER_ADMIN", "RIGHTS_MANAGER"];
 /** Prix par pays. */
 export const PRICE_ROLES: StaffRole[] = ["SUPER_ADMIN", "EDITOR"];
+
+/** Publicités : gérées par l'éditeur du catalogue. */
+export const AD_ROLES: StaffRole[] = ["SUPER_ADMIN", "EDITOR"];

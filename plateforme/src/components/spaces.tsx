@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { AdSlot } from "@/components/AdSlot";
 import { BookHero } from "@/components/BookHero";
 import { CinemaHero } from "@/components/CinemaHero";
 import { DocHero } from "@/components/DocHero";
@@ -48,6 +49,7 @@ async function BookSpaceContent() {
   return (
     <main data-universe="livre" className="flex-1">
       <BookHero featured={items[0]} count={items.length} lang={lang} />
+      <AdSlot placement="CATALOG" lang={lang} />
       {items.length === 0 ? (
         <Empty text={t(lang, "books.empty")} />
       ) : (
@@ -95,6 +97,7 @@ async function CinemaSpaceContent() {
       ) : (
         <>
           <CinemaHero items={items.slice(0, 4)} />
+          <AdSlot placement="CATALOG" lang={lang} />
           <div className="pb-8">
             {free.length > 0 && <Shelf lang={lang} title={t(lang, "films.free")} subtitle={t(lang, "films.freeSub")} items={free} />}
             {sub.length > 0 && <Shelf lang={lang} title={t(lang, "films.sub")} subtitle={t(lang, "films.subSub")} items={sub} />}
@@ -121,6 +124,7 @@ async function DocSpaceContent() {
   return (
     <main data-universe="doc" className="flex-1">
       <DocHero featured={items[0]} lang={lang} />
+      <AdSlot placement="CATALOG" lang={lang} />
       {items.length === 0 ? (
         <Empty text={t(lang, "docs.empty")} />
       ) : (

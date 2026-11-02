@@ -3,18 +3,36 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Book, EpubCFI as EpubCFIType, NavItem, Rendition } from "epubjs";
-import { BookmarkIcon, ChevronIcon } from "@/components/icons";
+import { BookmarkIcon, ChevronIcon, HeadsetIcon } from "@/components/icons";
+import { t as tr, type Lang } from "@/lib/i18n";
 
 type ThemeName = "paper" | "sepia" | "night";
 type Bookmark = { id: string; locator: string; label: string | null; percent: number };
 type Here = { start: string; end: string; href: string; pct: number };
 type Compare = (a: string, b: string) => number;
 
-const THEMES: Record<ThemeName, { label: string; bg: string; fg: string }> = {
-  paper: { label: "Clair", bg: "#fbf8f1", fg: "#1b1b1b" },
-  sepia: { label: "Sépia", bg: "#f1e6cc", fg: "#3b2f1c" },
-  night: { label: "Nuit", bg: "#0a1020", fg: "#d8deec" },
+const THEMES: Record<ThemeName, { label: "reader.themePaper" | "reader.themeSepia" | "reader.themeNight"; bg: string; fg: string }> = {
+  paper: { label: "reader.themePaper", bg: "#fbf8f1", fg: "#1b1b1b" },
+  sepia: { label: "reader.themeSepia", bg: "#f1e6cc", fg: "#3b2f1c" },
+  night: { label: "reader.themeNight", bg: "#0a1020", fg: "#d8deec" },
 };
+const RATES = [0.8, 1, 1.25, 1.5];
+
+/** Découpe un texte en phrases courtes : les navigateurs lisent mal les très longs passages d'un seul bloc. */
+function toChunks(text: string, max = 220): string[] {
+  const sentences = text.match(/[^.!?…]+[.!?…]*\s*/g) ?? [text];
+  const chunks: string[] = [];
+  let cur = "";
+  for (const s of sentences) {
+    if ((cur + s).length > max && cur) {
+      chunks.push(cur.trim());
+      cur = "";
+    }
+    cur += s;
+  }
+  if (cur.trim()) chunks.push(cur.trim());
+  return chunks;
+}
 const THEME_ORDER: ThemeName[] = ["paper", "sepia", "night"];
 const SIZE_MIN = 80;
 const SIZE_MAX = 180;
@@ -24,6 +42,9 @@ type Props = {
   workId: string;
   slug: string;
   title: string;
+  lang: Lang;
+  /** Langue du livre (fr, en) : sert à choisir la voix de la lecture à voix haute. */
+  bookLanguage: string;
   initialLocator: string | null;
   initialPercent: number;
 };
@@ -33,7 +54,7 @@ type Props = {
  * (compte, bibliothèque et pays vérifiés par le serveur) puis affiché dans le navigateur.
  * La position de lecture est enregistrée côté serveur : le livre se rouvre à la même page sur tous les appareils.
  */
-export function EpubReader({ workId, slug, title, initialLocator, initialPercent }: Props) {
+export function EpubReader({ workId, slug, title, lang, bookLanguage, initialLocator, initialPercent }: Props) {
   const viewer = useRef<HTMLDivElement>(null);
   const rendition = useRef<Rendition | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -48,6 +69,25 @@ export function EpubReader({ workId, slug, title, initialLocator, initialPercent
   const [here, setHere] = useState<Here | null>(null);
   const [compare, setCompare] = useState<Compare | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+
+  // Lecture à voix haute (synthèse vocale du navigateur).
+  const [canSpeak, setCanSpeak] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+  const [rateIdx, setRateIdx] = useState(1);
+  const speakingRef = useRef(false);
+  const rateRef = useRef(1);
+  const session = useRef(0);
+  const advancing = useRef(false);
+  const lastCfi = useRef("");
+  const restart = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    setCanSpeak("speechSynthesis" in window && "SpeechSynthesisUtterance" in window);
+    return () => {
+      speakingRef.current = false;
+      window.speechSynthesis?.cancel();
+    };
+  }, []);
 
   const flush = useCallback(
     (keepalive = false) => {
@@ -65,6 +105,90 @@ export function EpubReader({ workId, slug, title, initialLocator, initialPercent
     },
     [workId],
   );
+
+  const pageText = useCallback((): string => {
+    const r = rendition.current;
+    if (!r) return "";
+    const contents = r.getContents() as unknown as Array<{ document: Document; range: (cfi: string) => Range }>;
+    const c = contents[0];
+    if (!c) return "";
+    const start = (r.currentLocation() as unknown as { start?: { cfi: string } } | undefined)?.start?.cfi;
+    const body = c.document.body;
+    const range = c.document.createRange();
+    try {
+      const from = start ? c.range(start) : null;
+      if (from) range.setStart(from.startContainer, from.startOffset);
+      else range.setStart(body, 0);
+    } catch {
+      range.setStart(body, 0);
+    }
+    range.setEnd(body, body.childNodes.length);
+    return range.toString().replace(/\s+/g, " ").trim();
+  }, []);
+
+  const stopSpeaking = useCallback(() => {
+    speakingRef.current = false;
+    session.current += 1;
+    window.speechSynthesis?.cancel();
+    setSpeaking(false);
+  }, []);
+
+  const speakFromHere = useCallback(() => {
+    const synth = window.speechSynthesis;
+    if (!synth) return;
+    synth.cancel();
+    const token = ++session.current;
+    const chunks = toChunks(pageText());
+    const tag = bookLanguage.toLowerCase().startsWith("en") ? "en-GB" : "fr-FR";
+    let i = 0;
+
+    const step = () => {
+      if (token !== session.current || !speakingRef.current) return;
+      if (i >= chunks.length) {
+        // Fin du passage : on tourne la page et on continue, sauf à la fin du livre.
+        const before = lastCfi.current;
+        advancing.current = true;
+        void rendition.current?.next().then(async () => {
+          await new Promise((res) => setTimeout(res, 300));
+          advancing.current = false;
+          if (token !== session.current || !speakingRef.current) return;
+          if (lastCfi.current === before) stopSpeaking();
+          else speakFromHere();
+        });
+        return;
+      }
+      const u = new SpeechSynthesisUtterance(chunks[i++]);
+      u.lang = tag;
+      u.rate = rateRef.current;
+      u.onend = step;
+      u.onerror = () => {
+        if (token === session.current) stopSpeaking();
+      };
+      synth.speak(u);
+    };
+    step();
+  }, [bookLanguage, pageText, stopSpeaking]);
+
+  useEffect(() => {
+    restart.current = speakFromHere;
+  }, [speakFromHere]);
+
+  const toggleSpeaking = () => {
+    if (speakingRef.current) {
+      stopSpeaking();
+      return;
+    }
+    speakingRef.current = true;
+    setSpeaking(true);
+    speakFromHere();
+  };
+
+  const changeRate = () => {
+    const next = (rateIdx + 1) % RATES.length;
+    setRateIdx(next);
+    rateRef.current = RATES[next];
+    if (speakingRef.current) speakFromHere();
+  };
 
   const applyTheme = useCallback((name: ThemeName) => {
     rendition.current?.themes.select(name);
@@ -120,6 +244,8 @@ export function EpubReader({ workId, slug, title, initialLocator, initialPercent
           const pct = Math.round((total ? book!.locations.percentageFromCfi(loc.start.cfi) : loc.start.percentage) * 100);
           setPercent(pct);
           setHere({ start: loc.start.cfi, end: loc.end.cfi, href: loc.start.href, pct });
+          lastCfi.current = loc.start.cfi;
+          if (speakingRef.current && !advancing.current) restart.current?.();
           pending.current = { cfi: loc.start.cfi, pct };
           if (saveTimer.current) clearTimeout(saveTimer.current);
           saveTimer.current = setTimeout(() => flush(), 1500);
@@ -231,7 +357,7 @@ export function EpubReader({ workId, slug, title, initialLocator, initialPercent
       removeBookmark(marked.id);
       return;
     }
-    const label = `${chapterOf(page.href) ?? "Page"} — ${page.pct} %`;
+    const label = `${chapterOf(page.href) ?? tr(lang, "reader.page")} — ${page.pct} %`;
     try {
       const res = await fetch(`/api/books/${workId}/bookmarks`, {
         method: "POST",
@@ -259,40 +385,62 @@ export function EpubReader({ workId, slug, title, initialLocator, initialPercent
       className="fixed inset-0 z-50 flex flex-col"
       style={{ background: t.bg, color: t.fg }}
       role="region"
-      aria-label={`Lecture : ${title}`}
+      aria-label={tr(lang, "reader.region", { title })}
     >
       <div className={`${bar} h-12 shrink-0 border-b`} style={{ borderColor: `${t.fg}22` }}>
-        <Link href={`/oeuvres/${slug}`} className={btn} aria-label="Quitter la lecture">
+        <Link href={`/oeuvres/${slug}`} className={btn} aria-label={tr(lang, "reader.quit")}>
           <ChevronIcon dir="left" />
         </Link>
         <p className="min-w-0 flex-1 truncate text-center text-sm font-medium opacity-80">{title}</p>
+        {canSpeak && speaking && (
+          <button
+            type="button"
+            className={`${btn} min-w-12 tabular-nums`}
+            onClick={changeRate}
+            aria-label={tr(lang, "reader.speed", { rate: `${RATES[rateIdx]}×` })}
+          >
+            {RATES[rateIdx]}×
+          </button>
+        )}
+        {canSpeak && (
+          <button
+            type="button"
+            className={btn}
+            onClick={toggleSpeaking}
+            aria-pressed={speaking}
+            disabled={status !== "ready"}
+            aria-label={tr(lang, speaking ? "reader.stopListen" : "reader.listen")}
+          >
+            <HeadsetIcon className={`size-5 ${speaking ? "text-gold" : ""}`} />
+          </button>
+        )}
         <button
           type="button"
           className={btn}
           onClick={() => void toggleBookmark()}
           disabled={!page}
           aria-pressed={!!marked}
-          aria-label={marked ? "Retirer le signet de cette page" : "Ajouter un signet sur cette page"}
+          aria-label={tr(lang, marked ? "reader.markRemove" : "reader.markAdd")}
         >
           <BookmarkIcon filled={!!marked} className={`size-5 ${marked ? "text-gold" : ""}`} />
         </button>
         <button type="button" className={btn} onClick={() => setPanel((v) => (v ? null : "toc"))} aria-expanded={!!panel}>
-          Menu
+          {tr(lang, "reader.menu")}
         </button>
       </div>
 
       <div className="relative min-h-0 flex-1">
         <div ref={viewer} className="absolute inset-0 mx-auto max-w-3xl px-1" />
         {status === "loading" && (
-          <p className="absolute inset-0 grid place-items-center text-sm opacity-70">Ouverture du livre…</p>
+          <p className="absolute inset-0 grid place-items-center text-sm opacity-70">{tr(lang, "reader.opening")}</p>
         )}
         {status === "error" && (
           <div className="absolute inset-0 grid place-items-center p-6 text-center">
             <div>
-              <p className="font-semibold">Impossible d’ouvrir ce livre.</p>
-              <p className="mt-1 text-sm opacity-70">Vérifiez votre connexion, puis rouvrez la lecture.</p>
+              <p className="font-semibold">{tr(lang, "reader.errorTitle")}</p>
+              <p className="mt-1 text-sm opacity-70">{tr(lang, "reader.errorText")}</p>
               <Link href={`/oeuvres/${slug}`} className="btn btn-primary mt-4">
-                Retour à la fiche
+                {tr(lang, "reader.backToSheet")}
               </Link>
             </div>
           </div>
@@ -301,13 +449,13 @@ export function EpubReader({ workId, slug, title, initialLocator, initialPercent
           <>
             <button
               type="button"
-              aria-label="Page précédente"
+              aria-label={tr(lang, "reader.prev")}
               onClick={() => void rendition.current?.prev()}
               className="absolute inset-y-0 left-0 w-[18%] cursor-w-resize"
             />
             <button
               type="button"
-              aria-label="Page suivante"
+              aria-label={tr(lang, "reader.next")}
               onClick={() => void rendition.current?.next()}
               className="absolute inset-y-0 right-0 w-[18%] cursor-e-resize"
             />
@@ -329,12 +477,12 @@ export function EpubReader({ workId, slug, title, initialLocator, initialPercent
                   onClick={() => setPanel(k)}
                   className={`h-12 flex-1 text-sm font-semibold transition-opacity ${panel === k ? "border-b-2 border-gold" : "opacity-60"}`}
                 >
-                  {k === "toc" ? "Sommaire" : `Signets (${bookmarks.length})`}
+                  {k === "toc" ? tr(lang, "reader.toc") : tr(lang, "reader.marks", { n: bookmarks.length })}
                 </button>
               ))}
             </div>
             <ul className="min-h-0 flex-1 overflow-y-auto p-2">
-              {panel === "toc" && toc.length === 0 && <li className="px-2 py-2 text-sm opacity-70">Sommaire indisponible.</li>}
+              {panel === "toc" && toc.length === 0 && <li className="px-2 py-2 text-sm opacity-70">{tr(lang, "reader.tocNone")}</li>}
               {panel === "toc" &&
                 toc.map((item) => (
                   <li key={item.id ?? item.href}>
@@ -349,7 +497,7 @@ export function EpubReader({ workId, slug, title, initialLocator, initialPercent
                 ))}
               {panel === "marks" && bookmarks.length === 0 && (
                 <li className="px-2 py-3 text-sm opacity-70">
-                  Aucun signet. Touchez le marque-page en haut pour garder la page en cours.
+                  {tr(lang, "reader.marksNone")}
                 </li>
               )}
               {panel === "marks" &&
@@ -365,7 +513,7 @@ export function EpubReader({ workId, slug, title, initialLocator, initialPercent
                     <button
                       type="button"
                       onClick={() => removeBookmark(b.id)}
-                      aria-label={`Supprimer le signet : ${b.label ?? "Signet"}`}
+                      aria-label={tr(lang, "reader.marksDelete", { label: b.label ?? "" })}
                       className="grid size-11 shrink-0 place-items-center rounded-lg text-lg hover:bg-black/10"
                     >
                       ×
@@ -382,24 +530,24 @@ export function EpubReader({ workId, slug, title, initialLocator, initialPercent
           <div className="h-full bg-gold transition-[width]" style={{ width: `${percent}%` }} />
         </div>
         <div className={`${bar} h-14 justify-between`}>
-          <button type="button" className={btn} onClick={() => void rendition.current?.prev()} aria-label="Page précédente">
+          <button type="button" className={btn} onClick={() => void rendition.current?.prev()} aria-label={tr(lang, "reader.prev")}>
             <ChevronIcon dir="left" />
           </button>
           <div className="flex items-center gap-1">
-            <button type="button" className={btn} onClick={() => changeSize(-10)} aria-label="Réduire le texte" disabled={size <= SIZE_MIN}>
+            <button type="button" className={btn} onClick={() => changeSize(-10)} aria-label={tr(lang, "reader.sizeDown")} disabled={size <= SIZE_MIN}>
               A<span className="text-[10px]">−</span>
             </button>
-            <button type="button" className={btn} onClick={() => changeSize(10)} aria-label="Agrandir le texte" disabled={size >= SIZE_MAX}>
+            <button type="button" className={btn} onClick={() => changeSize(10)} aria-label={tr(lang, "reader.sizeUp")} disabled={size >= SIZE_MAX}>
               A<span className="text-[10px]">+</span>
             </button>
-            <button type="button" className={`${btn} min-w-16`} onClick={nextTheme} aria-label={`Ambiance : ${t.label}. Changer`}>
-              {t.label}
+            <button type="button" className={`${btn} min-w-16`} onClick={nextTheme} aria-label={tr(lang, "reader.mood", { label: tr(lang, t.label) })}>
+              {tr(lang, t.label)}
             </button>
           </div>
-          <span className="w-12 text-center text-xs tabular-nums opacity-70" aria-label="Avancement">
+          <span className="w-12 text-center text-xs tabular-nums opacity-70" aria-label={tr(lang, "reader.progress")}>
             {percent}%
           </span>
-          <button type="button" className={btn} onClick={() => void rendition.current?.next()} aria-label="Page suivante">
+          <button type="button" className={btn} onClick={() => void rendition.current?.next()} aria-label={tr(lang, "reader.next")}>
             <ChevronIcon dir="right" />
           </button>
         </div>

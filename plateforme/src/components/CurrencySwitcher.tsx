@@ -5,10 +5,10 @@ import { t, type Lang } from "@/lib/i18n";
 import { setDisplayCurrency, useDisplayCurrency } from "@/components/Money";
 
 /** Sélecteur de devise d'affichage des prix (F CFA, naira, euro, dollar, livre sterling). */
-export function CurrencySwitcher({ lang, className = "" }: { lang: Lang; className?: string }) {
+export function CurrencySwitcher({ lang, className = "inline-flex" }: { lang: Lang; className?: string }) {
   const pref = useDisplayCurrency();
   return (
-    <label className={`inline-flex items-center gap-2 text-sm ${className}`}>
+    <label className={`items-center gap-2 text-sm ${className}`}>
       <span className="sr-only">{t(lang, "currency.label")}</span>
       <select
         value={pref}

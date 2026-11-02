@@ -4,12 +4,14 @@ import { EpubReader } from "@/components/EpubReader";
 import { getCurrentUser } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { authorizeRead } from "@/lib/reading";
+import { getLang } from "@/lib/lang";
+import { t } from "@/lib/i18n";
 
 export const metadata = { title: "Lecture — CCC" };
 
 export default function ReadPage({ params }: PageProps<"/lire/[slug]">) {
   return (
-    <Suspense fallback={<p className="p-8 text-muted">Ouverture du livre…</p>}>
+    <Suspense fallback={<p className="p-8 text-muted">…</p>}>
       <Reader params={params} />
     </Suspense>
   );
@@ -17,6 +19,7 @@ export default function ReadPage({ params }: PageProps<"/lire/[slug]">) {
 
 async function Reader({ params }: { params: PageProps<"/lire/[slug]">["params"] }) {
   const { slug } = await params;
+  const lang = await getLang();
   const user = await getCurrentUser();
   if (!user) redirect("/connexion");
 
@@ -39,6 +42,8 @@ async function Reader({ params }: { params: PageProps<"/lire/[slug]">["params"] 
       workId={access.work.id}
       slug={access.work.slug}
       title={access.work.title}
+      lang={lang}
+      bookLanguage={access.work.language}
       initialLocator={progress?.locator ?? null}
       initialPercent={Math.round(progress?.position ?? 0)}
     />

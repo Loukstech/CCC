@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Fraunces, Geist } from "next/font/google";
+import { StickyAdLoader } from "@/components/StickyAdLoader";
 import { BottomNavLoader } from "@/components/BottomNavLoader";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
@@ -38,6 +39,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <Header />
         </Suspense>
         <div className="flex flex-1 flex-col pb-16 md:pb-0">{children}</div>
+        <Suspense fallback={null}>
+          <StickyAdLoader />
+        </Suspense>
         <Suspense fallback={null}>
           <BottomNavLoader />
         </Suspense>

@@ -11,7 +11,12 @@ export const metadata = { title: "Administration — CCC" };
 export default function AdminPage() {
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-12">
-      <h1 className="mb-6 font-display text-3xl font-semibold text-brand">Administration du catalogue</h1>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-display text-3xl font-semibold text-brand">Administration du catalogue</h1>
+        <Link href="/admin/publicites" className="rounded-lg border border-line px-4 py-2 text-sm font-medium hover:bg-brand/5">
+          Gérer les publicités
+        </Link>
+      </div>
       <Suspense fallback={<p className="text-muted">Chargement…</p>}>
         <AdminContent />
       </Suspense>
