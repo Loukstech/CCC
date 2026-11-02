@@ -69,6 +69,24 @@ Compte administrateur de démonstration : `admin@ccc.local` / `admin-ccc-dev-202
 | `npm run db:seed` | Données de démonstration |
 | `npm run admin:password` | Change le mot de passe administrateur |
 
+## Langues, devises, publicités
+
+- **Langues** : français et anglais. Le choix (boutons FR / EN) est gardé dans un cookie ; sans choix, la langue du navigateur est utilisée. Les textes sont dans `src/lib/i18n/fr.ts` et `en.ts` : toute clé ajoutée en français doit l'être en anglais (sinon la compilation échoue). Les pages d'administration restent en français.
+- **Devises** : le sélecteur propose FCFA, naira, euro, dollar et livre sterling. La conversion est **indicative** et ne sert qu'à l'affichage : le paiement est facturé dans la devise du prix d'origine. Les taux sont dans `src/lib/currency.ts` (l'euro est à parité fixe avec le F CFA ; les autres taux sont à mettre à jour régulièrement).
+- **Pays** : liste dans `src/lib/countries.ts` (30 pays). Une œuvre n'est visible que dans les pays de sa licence.
+- **Publicités** : quatre emplacements (accueil, pages catalogue, fiche d'œuvre, bandeau fixe en bas de l'écran). On les gère dans Administration > Gérer les publicités. Chaque bandeau porte la mention « Publicité » et les clics sont comptés.
+- **Lecture à voix haute** : dans le lecteur de livres, le bouton casque lit le livre avec la voix du navigateur (vitesse réglable). Ce n'est pas un livre audio enregistré.
+
+## Mettre à jour la base de données
+
+Après un `git pull`, appliquer les nouvelles migrations :
+
+```
+npx prisma migrate deploy
+```
+
+Attention : avec les adresses Neon dans `.env`, cette commande modifie la base **en ligne**, la même que celle du site déployé. Appliquez-la **avant** de publier le nouveau code sur Vercel, sinon le site en ligne cherchera une table qui n'existe pas encore.
+
 ## Organisation
 
 - `prisma/` : schéma de la base et migrations

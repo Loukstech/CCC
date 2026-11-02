@@ -4,6 +4,8 @@ import { Suspense } from "react";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { getCurrentUser } from "@/lib/dal";
 import { db } from "@/lib/db";
+import { t } from "@/lib/i18n";
+import { getLang } from "@/lib/lang";
 import { authorizeWatch } from "@/lib/reading";
 import { getVideoProvider } from "@/lib/video";
 
@@ -12,7 +14,7 @@ export const metadata = { title: "Visionnage — CCC" };
 export default function WatchPage({ params }: PageProps<"/regarder/[slug]">) {
   return (
     <main className="flex-1 bg-brand-night text-white">
-      <Suspense fallback={<p className="mx-auto max-w-5xl p-8 text-white/70">Ouverture de la vidéo…</p>}>
+      <Suspense fallback={<p className="mx-auto max-w-5xl p-8 text-white/70" aria-busy="true">…</p>}>
         <Watch params={params} />
       </Suspense>
     </main>
@@ -20,6 +22,7 @@ export default function WatchPage({ params }: PageProps<"/regarder/[slug]">) {
 }
 
 async function Watch({ params }: { params: PageProps<"/regarder/[slug]">["params"] }) {
+  const lang = await getLang();
   const { slug } = await params;
   const user = await getCurrentUser();
   if (!user) redirect("/connexion");
@@ -53,10 +56,11 @@ async function Watch({ params }: { params: PageProps<"/regarder/[slug]">["params
       <VideoPlayer
         workId={access.work.id}
         title={access.work.title}
+        lang={lang}
         src={playback.url}
         kind={playback.kind}
         initialPosition={resume}
-        watermark={`${user.name ?? user.email ?? "Abonné"} · ${user.id.slice(-6).toUpperCase()}`}
+        watermark={`${user.name ?? user.email ?? t(lang, "video.subscriber")} · ${user.id.slice(-6).toUpperCase()}`}
       />
       <div className="px-4 pt-5 sm:px-0">
         <h1 className="font-display text-2xl font-semibold sm:text-3xl">{access.work.title}</h1>

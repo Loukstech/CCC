@@ -12,17 +12,23 @@ export async function getAds(placement: AdPlacementKey) {
   cacheTag(ADS_TAG);
   cacheLife("minutes");
   const now = new Date();
-  return db.ad.findMany({
-    where: {
-      placement,
-      active: true,
-      AND: [
-        { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
-        { OR: [{ endsAt: null }, { endsAt: { gte: now } }] },
-      ],
-    },
-    orderBy: { createdAt: "desc" },
-    take: 5,
-    select: { id: true, title: true, advertiser: true, text: true, imageUrl: true },
-  });
+  try {
+    return await db.ad.findMany({
+      where: {
+        placement,
+        active: true,
+        AND: [
+          { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
+          { OR: [{ endsAt: null }, { endsAt: { gte: now } }] },
+        ],
+      },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      select: { id: true, title: true, advertiser: true, text: true, imageUrl: true },
+    });
+  } catch (error) {
+    // Une panne des publicités (par exemple une migration pas encore appliquée) ne doit jamais bloquer le catalogue.
+    console.error("Publicités indisponibles :", error);
+    return [];
+  }
 }

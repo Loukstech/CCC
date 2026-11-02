@@ -8,7 +8,9 @@ import { getCurrentUser } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { markOrderFailed, markOrderPaid } from "@/lib/payments/fulfill";
 import { getPaymentProvider } from "@/lib/payments";
-import { PLAN_LABEL, isPlan, planPriceFor } from "@/lib/plans";
+import { t } from "@/lib/i18n";
+import { getLang } from "@/lib/lang";
+import { isPlan, planPriceFor } from "@/lib/plans";
 import { getCountry, isAvailable } from "@/lib/rights";
 
 /** Achat d'une œuvre à l'unité : crée la commande « en attente », puis envoie vers la page de paiement. */
@@ -58,6 +60,7 @@ export async function startSubscription(formData: FormData) {
   const user = await getCurrentUser();
   if (!user) redirect("/connexion");
 
+  const lang = await getLang();
   const plan = formData.get("plan");
   if (!isPlan(plan)) return;
   const country = await getCountry(user);
@@ -73,7 +76,7 @@ export async function startSubscription(formData: FormData) {
     orderId: order.id,
     amount: price.amount,
     currency: price.currency,
-    description: `Abonnement CCC ${PLAN_LABEL[plan].toLowerCase()}`,
+    description: t(lang, "pay.subDescription", { plan: t(lang, `sub.planLower.${plan}`) }),
     customer: { name: user.name, email: user.email },
   });
   await db.order.update({ where: { id: order.id }, data: { providerRef: checkout.providerRef } });

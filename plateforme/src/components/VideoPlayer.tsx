@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type Hls from "hls.js";
+import { t, type Lang } from "@/lib/i18n";
 
 const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
 const SAVE_EVERY_MS = 10_000;
@@ -15,13 +16,14 @@ type Props = {
   initialPosition: number;
   /** Texte discret affiché sur l'image (filigrane : dissuade le partage d'écran, cahier des charges 13). */
   watermark: string;
+  lang: Lang;
 };
 
 /**
  * Lecteur vidéo : reprise là où l'on s'est arrêté, sauts de 10 secondes, vitesse, qualité (flux adaptatif),
  * plein écran. La position est enregistrée côté serveur (toutes les 10 s, à la pause, à la fin, en quittant la page).
  */
-export function VideoPlayer({ workId, title, src, kind, initialPosition, watermark }: Props) {
+export function VideoPlayer({ workId, title, src, kind, initialPosition, watermark, lang }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const video = useRef<HTMLVideoElement>(null);
   const hls = useRef<Hls | null>(null);
@@ -146,17 +148,17 @@ export function VideoPlayer({ workId, title, src, kind, initialPosition, waterma
         </span>
         {error && (
           <p role="alert" className="absolute inset-0 grid place-items-center bg-black/80 p-6 text-center text-sm">
-            Impossible de lire cette vidéo pour le moment. Vérifiez votre connexion, puis réessayez.
+            {t(lang, "video.error")}
           </p>
         )}
       </div>
 
       <div className="flex items-center justify-between gap-1 px-2 pt-2 sm:px-0">
         <div className="flex items-center gap-1">
-          <button type="button" className={btn} onClick={() => skip(-10)} aria-label="Reculer de 10 secondes">
+          <button type="button" className={btn} onClick={() => skip(-10)} aria-label={t(lang, "video.back10")}>
             −10 s
           </button>
-          <button type="button" className={btn} onClick={() => skip(10)} aria-label="Avancer de 10 secondes">
+          <button type="button" className={btn} onClick={() => skip(10)} aria-label={t(lang, "video.fwd10")}>
             +10 s
           </button>
         </div>
@@ -166,16 +168,18 @@ export function VideoPlayer({ workId, title, src, kind, initialPosition, waterma
               type="button"
               className={`${btn} min-w-16`}
               onClick={cycleQuality}
-              aria-label={`Qualité : ${level === -1 ? "automatique" : `${heights[level]} pixels`}. Changer`}
+              aria-label={t(lang, "video.quality", {
+                q: level === -1 ? t(lang, "video.qualityAuto") : t(lang, "video.qualityPixels", { n: heights[level] }),
+              })}
             >
-              {level === -1 ? "Auto" : `${heights[level]}p`}
+              {level === -1 ? t(lang, "video.auto") : `${heights[level]}p`}
             </button>
           )}
-          <button type="button" className={`${btn} min-w-16`} onClick={cycleSpeed} aria-label={`Vitesse ${speed} fois. Changer`}>
+          <button type="button" className={`${btn} min-w-16`} onClick={cycleSpeed} aria-label={t(lang, "video.speed", { speed })}>
             ×{speed}
           </button>
           <button type="button" className={btn} onClick={fullscreen}>
-            Plein écran
+            {t(lang, "video.fullscreen")}
           </button>
         </div>
       </div>
