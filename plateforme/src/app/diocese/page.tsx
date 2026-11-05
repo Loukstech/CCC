@@ -3,6 +3,8 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { requireDioceseScope } from "@/lib/dal";
 import { db } from "@/lib/db";
+import { formatMoney } from "@/lib/currency";
+import { balanceOf, statement } from "@/lib/ledger";
 import { t } from "@/lib/i18n";
 import { getLang } from "@/lib/lang";
 
@@ -68,6 +70,17 @@ async function DioceseContent({
   const shown = faithful.length;
   const canExport = role !== "VIEWER";
   const dateLocale = lang === "fr" ? "fr-FR" : "en-GB";
+
+  // Revenus du diocèse (lot 4 et 5) : solde à recevoir, acquis du mois, versements de l'année.
+  const [revenueBalance, revenue] = await Promise.all([
+    balanceOf("DIOCESE", { dioceseId }, "XOF"),
+    statement("DIOCESE", { dioceseId }, "XOF", 6),
+  ]);
+  const thisMonth = new Date().toISOString().slice(0, 7);
+  const earnedThisMonth = revenue.months.find((m) => m.month === thisMonth)?.earned ?? 0;
+  const paidThisYear = revenue.payouts
+    .filter((p) => p.paidAt && p.paidAt.getUTCFullYear() === new Date().getUTCFullYear())
+    .reduce((n, p) => n + p.amount, 0);
   const roleLabel =
     role === "SUPER_ADMIN"
       ? t(lang, "dioPage.roleSuper")
@@ -99,6 +112,45 @@ async function DioceseContent({
           <p className="text-sm text-muted">{t(lang, "dioPage.faithful")}</p>
           <p className="font-semibold text-ink text-3xl">{total}</p>
         </div>
+      </section>
+
+      <section className="rounded-2xl border border-line bg-surface p-5">
+        <h2 className="mb-3 font-display text-xl font-semibold text-brand">{t(lang, "dioPage.revenue")}</h2>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-xl bg-paper/60 p-3">
+            <p className="text-xs uppercase tracking-wide text-muted">{t(lang, "dioPage.revenueBalance")}</p>
+            <p className="font-display mt-1 text-xl font-semibold text-ink">{formatMoney(revenueBalance, "XOF", lang)}</p>
+          </div>
+          <div className="rounded-xl bg-paper/60 p-3">
+            <p className="text-xs uppercase tracking-wide text-muted">{t(lang, "dioPage.revenueMonth")}</p>
+            <p className="font-display mt-1 text-xl font-semibold text-ink">{formatMoney(earnedThisMonth, "XOF", lang)}</p>
+          </div>
+          <div className="rounded-xl bg-paper/60 p-3">
+            <p className="text-xs uppercase tracking-wide text-muted">{t(lang, "dioPage.revenuePaid")}</p>
+            <p className="font-display mt-1 text-xl font-semibold text-ink">{formatMoney(paidThisYear, "XOF", lang)}</p>
+          </div>
+        </div>
+        {revenue.months.length > 0 && (
+          <table className="mt-4 w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs uppercase tracking-wide text-muted">
+                <th className="py-1">{t(lang, "ecr.month")}</th>
+                <th className="py-1 text-right">{t(lang, "ecr.earned")}</th>
+                <th className="py-1 text-right">{t(lang, "ecr.paid")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {revenue.months.map((month) => (
+                <tr key={month.month} className="border-t border-line">
+                  <td className="py-1.5">{month.month}</td>
+                  <td className="py-1.5 text-right tabular-nums">{formatMoney(month.earned + month.refunded, "XOF", lang)}</td>
+                  <td className="py-1.5 text-right tabular-nums">{formatMoney(month.paid, "XOF", lang)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        {revenue.months.length === 0 && <p className="mt-3 text-sm text-muted">{t(lang, "dioPage.revenueEmpty")}</p>}
       </section>
 
       <section className="rounded-2xl border border-line bg-surface p-5">

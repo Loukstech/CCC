@@ -36,12 +36,11 @@ const PROVIDERS: Record<string, PaymentProvider> = { demo };
 /**
  * La page de paiement simulée est-elle accessible ?
  *
- * Par défaut NON : un acheteur ne doit jamais voir un bouton « payer » qui ne débite rien, cela
- * discrédite tout le site. On l'active seulement pour les recettes techniques, avec
- * DEMO_PAYMENT_VISIBLE=true. Tant qu'aucun prestataire réel n'est branché (PAYMENT_PROVIDER),
- * l'achat et l'abonnement renvoient vers la page « paiement bientôt disponible ».
+ * Oui par défaut : c'est ce qui permet de dérouler tout le parcours (achat → commissions → versement)
+ * tant qu'aucun prestataire réel n'est branché. Mettre DEMO_PAYMENT_VISIBLE=false pour la fermer,
+ * par exemple le jour où le site est montré avec un vrai prestataire.
  */
-export const demoCheckoutVisible = process.env.DEMO_PAYMENT_VISIBLE === "true";
+export const demoCheckoutVisible = process.env.DEMO_PAYMENT_VISIBLE !== "false";
 
 export function getPaymentProvider(): PaymentProvider {
   const id = process.env.PAYMENT_PROVIDER ?? "demo";

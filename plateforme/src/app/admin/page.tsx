@@ -45,6 +45,18 @@ export default async function AdminPage() {
           >
             {t(lang, "adm.ads")}
           </Link>
+          <Link
+            href="/admin/finances"
+            className="rounded-lg border border-line px-4 py-2 text-sm font-medium hover:bg-brand/5"
+          >
+            {t(lang, "fin.title")}
+          </Link>
+          <Link
+            href="/admin/manuscrits"
+            className="rounded-lg border border-line px-4 py-2 text-sm font-medium hover:bg-brand/5"
+          >
+            {t(lang, "ms.title")}
+          </Link>
         </div>
       </div>
       <Suspense fallback={<p className="text-muted">{t(lang, "adm.loading")}</p>}>

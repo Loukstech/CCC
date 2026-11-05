@@ -26,6 +26,8 @@ type Account = {
   role?: "ADMIN" | "VIEWER";
   country?: string;
   works?: string[];
+  /** Paroisse de rattachement : nécessaire pour un fidèle (et pour tester un achat, donc une commission diocèse). */
+  parish?: string;
 };
 
 const ACCOUNTS: Account[] = [
@@ -100,6 +102,13 @@ const ACCOUNTS: Account[] = [
     country: "NG",
     works: ["demo-film-3", "demo-film-4"],
   },
+  {
+    email: "fidele.demo@ccc.example",
+    name: "Fidèle Démo",
+    password: "Fidele-2026",
+    country: "BJ",
+    parish: "Paroisse Mont Sinaï",
+  },
 ];
 
 async function main() {
@@ -152,6 +161,22 @@ async function main() {
       });
       attached += res.count;
     }
+
+    if (a.parish) {
+      const parish = await db.parish.findFirst({
+        where: { name: a.parish, active: true },
+        select: { id: true },
+      });
+      if (!parish) {
+        console.warn(`Paroisse "${a.parish}" introuvable — lancez d'abord npm run db:dioceses.`);
+      } else {
+        // Consentement explicite : sans lui, un fidèle ne peut pas créer de commande rattachée à un diocèse.
+        await db.user.update({
+          where: { id: user.id },
+          data: { parishId: parish.id, parishConsentAt: new Date() },
+        });
+      }
+    }
   }
 
   const orphan = await db.work.count({ where: { authorId: null } });
@@ -160,7 +185,7 @@ async function main() {
 
   console.log("\nIdentifiants de démonstration :");
   for (const a of ACCOUNTS) {
-    const scope = a.staffRole ?? (a.dioceseSlug ? `diocèse ${a.dioceseSlug}` : "auteur");
+    const scope = a.staffRole ?? (a.dioceseSlug ? `diocèse ${a.dioceseSlug}` : a.parish ? "fidèle" : "auteur");
     console.log(`  ${a.email.padEnd(24)} ${a.password.padEnd(14)} ${scope}`);
   }
 }

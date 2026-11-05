@@ -5,7 +5,7 @@ réattribue les œuvres). Domaine `@ccc.example` : réservé, aucun email ne peu
 
 | Rôle | Email | Mot de passe | Périmètre |
 |---|---|---|---|
-| Super administrateur | `admin@ccc.example` | `Admin-2026` | `/admin`, modération, référentiel, œuvres |
+| Super administrateur | `admin@ccc.example` | `Admin-2026` | `/admin`, modération, référentiel, œuvres, finances, manuscrits |
 | Diocèse Bénin | `benin@ccc.example` | `Benin-2026` | ADMIN sur le diocèse Bénin |
 | Diocèse Togo | `togo@ccc.example` | `Togo-2026` | ADMIN sur le diocèse Togo |
 | Diocèse Nigeria | `nigeria@ccc.example` | `Nigeria-2026` | ADMIN sur le diocèse Nigeria |
@@ -14,19 +14,42 @@ réattribue les œuvres). Domaine `@ccc.example` : réservé, aucun email ne peu
 | Auteur | `auteur3@ccc.example` | `Auteur3-2026` | Chidi Okonkwo — 4 documentaires |
 | Auteur | `auteur4@ccc.example` | `Auteur4-2026` | Mariam Dossou — 2 films |
 | Auteur | `auteur5@ccc.example` | `Auteur5-2026` | Tunde Adeyemi — 2 films |
+| Fidèle acheteur | `fidele.demo@ccc.example` | `Fidele-2026` | Paroisse Mont Sinaï (diocèse Bénin), consentement donné |
 
 ## Ce que le script rattache
 
-Les 13 œuvres de démonstration sont reliées à un compte via `Work.authorId` (migration
-`20261105153000_auteur_oeuvres`), et le nom affiché (`Work.author`) devient celui du compte.
-La suppression d'un compte ne supprime pas l'œuvre : `authorId` passe à `NULL`.
+- Les 13 œuvres de démonstration sont reliées à un compte via `Work.authorId` (migration
+  `20261105153000_auteur_oeuvres`), et le nom affiché (`Work.author`) devient celui du compte.
+  La suppression d'un compte ne supprime pas l'œuvre : `authorId` passe à `NULL`.
+- `fidele.demo` est rattaché à une paroisse avec consentement : c'est le compte à utiliser pour
+  dérouler un achat et voir apparaître une commission diocèse.
 
 ## Connexion
 
 `/connexion` avec l'email et le mot de passe. Un administrateur diocésain est redirigé vers
-`/diocese` ; le super administrateur vers `/admin`.
+`/diocese` ; le super administrateur vers `/admin` ; un auteur peut ouvrir `/ecrivain`.
+
+## Parcours de démonstration des lots 4 à 7
+
+1. **Achat** : connecté en `fidele.demo`, ouvrir une œuvre payante, « Acheter », puis « Payer »
+   sur `/paiement/demo`. Le paiement est simulé, aucune somme n'est débitée.
+2. **Commissions** : en `admin`, aller dans `/admin/finances`. La vente apparaît, découpée en part
+   écrivain / diocèse / plateforme, avec les frais du prestataire.
+3. **Espace écrivain** : en `auteur1`, ouvrir `/ecrivain` : ses œuvres, ses ventes, son solde, ses
+   relevés mensuels et les avis reçus.
+4. **Versement** : en `admin`, préparer un lot pour les écrivains sur le mois, le valider, puis le
+   marquer versé avec une référence (par exemple `MM-2026-001`).
+5. **Diocèse** : en `benin@ccc.example`, `/diocese` affiche les revenus du diocèse et son relevé.
+6. **Manuscrit** : en `auteur1`, déposer un manuscrit depuis `/ecrivain` ; en `admin`, le retrouver
+   dans `/admin/manuscrits` et le passer « à l'étude », « accepté » ou « refusé ».
+
+## Données déjà en base
+
+4 ventes payées, 1 remboursée, un lot `VRS-2026-11-ECR-001` versé (référence `MM-DEMO-0001`) et un
+solde disponible. Les totaux sont réels : écrivains + diocèses + plateforme = net encaissé.
 
 ## À ne pas montrer en démonstration
 
-`/paiement/demo` : l'acheteur y valide lui-même le paiement. Le lot 4 (vrai prestataire,
-webhooks, frais) n'est pas fait.
+Rien d'obligatoire, mais sachez que `/paiement/demo` est une **simulation** (l'acheteur valide
+lui-même le paiement). Pour la fermer : `DEMO_PAYMENT_VISIBLE=false` dans les variables
+d'environnement ; les boutons d'achat renvoient alors vers `/paiement/indisponible`.

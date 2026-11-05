@@ -158,29 +158,29 @@ ouvrant `/paiement/indisponible`, qui n'existe que dans cette version. Voir `DEP
 
 ## 6. Ce qui reste à faire
 
-### Lots suivants
+### Lots 4 à 7 — livrés (détail en section 11)
 
-| Lot | Contenu | Prérequis |
+| Lot | Contenu | État |
 |---|---|---|
-| **4a** | Enregistrer les frais du prestataire (`feeAmount`) et le net réellement reçu (`netAmount`) | Intégration d'un prestataire de paiement |
-| **4b** | Calcul des commissions : 10 % diocèse, 90 % écrivain, registre d'écritures anti-double-comptage | Décision sur les frais |
-| **4c** | Remboursement : écritures annulées, jamais supprimées | 4b |
-| **5** | Versements : relevés mensuels, lots, préparation, approbation, référence mobile money, statuts | 4a et 4c |
-| **6** | Espace écrivain : profil validé, œuvres, ventes, avis, droits acquis | 4b |
-| **7** | *(option)* Dépôt de manuscrit et validation éditoriale | — |
+| **4a** | Frais du prestataire (`feeAmount`) et net réellement reçu (`netAmount`) | ✅ |
+| **4b** | Commissions écrivain / diocèse / plateforme, registre d'écritures anti-double-comptage | ✅ |
+| **4c** | Remboursement : contre-écritures, jamais de suppression | ✅ |
+| **5** | Versements : relevés mensuels, lots, approbation, référence mobile money, statuts | ✅ |
+| **6** | Espace écrivain : profil, œuvres, ventes, avis, droits acquis | ✅ |
+| **7** | *(option)* Dépôt de manuscrit et validation éditoriale | ✅ (fichier par lien) |
 
-**Ces lots ne peuvent pas être testés sérieusement aujourd'hui** : le paiement est un adaptateur de
-démonstration où l'acheteur clique lui-même « payé » ou « échec ». Il n'y a ni webhook, ni frais, ni
-argent réel. On peut écrire le calcul, pas prouver qu'il est juste.
+**Ce qui n'est toujours pas prouvé** : le paiement reste un adaptateur de démonstration où l'acheteur
+clique lui-même « payé » ou « échec ». Les calculs sont justes et vérifiés au franc près, mais il n'y a
+ni webhook, ni frais réels, ni argent. Premier point des travaux restants (section 11).
 
 ### Travaux restants sur le lot 3
 
 - ✅ **Gestion des comptes diocésains** — livrée : liste, changement de rôle, désactivation,
   réinitialisation du mot de passe.
-- **Mot de passe provisoire sans expiration** : il faudrait imposer son changement à la première
-  connexion. Non fait : sans messagerie, imposer un changement à la première connexion complique la
-  démonstration sans rien apporter au client à ce stade.
-- **`/diocese/revenus`** : dépend du lot 5, ne peut pas être fait avant.
+- **Mot de passe provisoire sans expiration** : décision prise avec le client — on n'impose pas de
+  changement à la première connexion. Le provisoire s'affiche une seule fois et se transmet de vive
+  voix ; l'administration peut le réinitialiser à tout moment.
+- ✅ **Revenus du diocèse** : section « Revenus du diocèse » dans `/diocese` (lot 5, voir section 11).
 - **Pagination** : la page affiche les 200 inscriptions les plus récentes, l'export contient tout.
   Suffisant pour un diocèse, à revoir si les volumes augmentent.
 - ✅ **Langue** : `/diocese` et l'ensemble de `/admin` sont bilingues FR/EN (voir section 10).
@@ -291,10 +291,10 @@ indisponible.
 
 ### Paiement de démonstration retiré du parcours
 
-`/paiement/demo` répond désormais 404 par défaut, et « Acheter » / « S'abonner » mènent à
-`/paiement/indisponible`, qui explique que le paiement en ligne arrivera avec le prestataire. Aucune
-commande n'est créée. La page de faux paiement reste accessible uniquement avec
-`DEMO_PAYMENT_VISIBLE=true`, pour les recettes techniques.
+`/paiement/demo` est **ouvert par défaut** : c'est ce qui permet de dérouler tout le parcours
+(achat → commissions → versement) tant qu'aucun prestataire n'est branché. Mettre
+`DEMO_PAYMENT_VISIBLE=false` ferme la page (404) et renvoie vers `/paiement/indisponible`, à faire le
+jour où le site est montré avec un vrai prestataire.
 
 ### Vérifications
 
@@ -304,3 +304,105 @@ commande n'est créée. La page de faux paiement reste accessible uniquement ave
   diocèses et fiche œuvre s'affichent en anglais **et** en français ; `/paiement/demo/…` ne sert plus
   l'interface de simulation.
 - Page d'accueil : 200, données Neon chargées.
+
+## 11. Lots 4 à 7 — commissions, versements, espace écrivain, manuscrits
+
+Implémentés le 5 novembre au soir, avec **paiement simulé** utilisable pour la démonstration.
+Migration appliquée sur Neon : `20261105184021_lots_4_a_7`.
+
+### Le barème retenu (question B2 du cahier des charges)
+
+Le cahier des charges demandait « 90 % écrivain + 10 % diocèse », calculés sur le brut : cela ne
+laissait **aucune place aux frais du prestataire** et la somme dépassait 100 % du net. Le barème
+appliqué part du **net réellement encaissé** (brut moins les frais) :
+
+| Bénéficiaire | Part du net | Pourquoi |
+|---|---|---|
+| Écrivain | **70 %** | reste majoritaire : c'est ce que le client veut défendre |
+| Diocèse | **10 %** | la part promise aux diocèses |
+| Plateforme | **20 %** | hébergement, vidéo, support, frais |
+
+Frais du prestataire : **2 %** du montant encaissé, déduits avant partage.
+Sur un abonnement (pas d'écrivain à rémunérer) : diocèse 10 %, plateforme 90 % du net.
+
+Tout est réglable sans toucher au code :
+`CCC_FEE_PPM=200`, `CCC_WRITER_PPM=7000`, `CCC_DIOCESE_PPM=1000`, `CCC_PLATFORM_PPM=2000`,
+`CCC_SUB_DIOCESE_PPM=1000` (points de base, 10 000 = 100 %).
+
+Exemple contrôlé en base : vente de 3 000 F CFA → frais 60, net 2 940, écrivain 2 058,
+diocèse 294, plateforme 588.
+
+### Lot 4 — registre des commissions
+
+- Table `CommissionEntry` : une écriture par bénéficiaire et par vente (écrivain, diocèse, plateforme).
+- **Clé d'idempotence** unique par écriture (`sale:<commande>:<bénéficiaire>`) : un webhook rejoué, un
+  double encaissement ou une réconciliation ne peuvent pas payer deux fois.
+- Les champs `feePpm`, `feeAmount`, `netAmount` sont enregistrés sur la commande : on peut expliquer
+  un calcul des mois après.
+- **Remboursement = contre-écritures négatives**, jamais de suppression (lot 4c).
+- Réconciliation : bouton « Réparer les commissions manquantes » qui rattrape les commandes payées
+  sans écritures (5 commandes historiques ont été rattrapées ainsi).
+- Sans auteur identifié ou sans diocèse, la part concernée revient à la plateforme : l'argent reçu est
+  toujours affecté en totalité.
+
+### Lot 5 — versements
+
+- Table `PayoutBatch` + `PayoutItem` : préparation d'un lot par caisse (écrivains ou diocèses) et par
+  mois, référence lisible (`VRS-2026-11-ECR-001`), statuts `DRAFT → APPROVED → PAID`, ou `CANCELED`.
+- Un lot validé ne se modifie plus ; le versement exige une **référence de paiement** (mobile money,
+  bordereau).
+- Solde d'un bénéficiaire = somme des écritures − montants déjà réservés dans les lots non annulés.
+- Écran `/admin/finances` (rôles `SUPER_ADMIN`, `FINANCE`) : barème, totaux, soldes, lots, dernières
+  commandes et remboursement en un clic.
+- Espace diocèse : section « Revenus du diocèse » (solde à recevoir, acquis du mois, versé cette
+  année, relevé mensuel) — le lien `/diocese/revenus` du cahier est ainsi couvert.
+
+### Lot 6 — espace écrivain
+
+`/ecrivain` (lien dans l'en-tête) : profil d'auteur (nom de plume, présentation, coordonnées de
+versement, statut de validation), œuvres rattachées, nombre de ventes, solde à verser, relevés
+mensuels, versements reçus et avis sur ses œuvres.
+
+### Lot 7 — manuscrits (option)
+
+Dépôt d'un manuscrit depuis l'espace écrivain (titre, langue, résumé, lien vers le fichier) et file de
+lecture `/admin/manuscrits` avec décisions « à l'étude / accepté / refusé » et note au comité.
+L'envoi de fichier binaire n'est pas possible sur Vercel (pas de disque inscriptible) : c'est un lien.
+
+### Vérifications faites sur la base réelle
+
+- `npx prisma migrate dev` : migration appliquée, client régénéré.
+- 4 ventes simulées, 1 remboursement, 1 lot préparé → validé → versé : tous les statuts traversés.
+- **Identité comptable vérifiée** : écrivains 7 889 + diocèses 735 + plateforme 2 646 = **11 270 =
+  net encaissé**, au franc près.
+- Idempotence : rejouer un encaissement n'ajoute aucune écriture.
+- `npx tsc --noEmit` et `npm run lint` : propres. `npm run build` : réussit.
+- Écrans contrôlés en session réelle (jetons de test supprimés ensuite) : `/admin/finances`,
+  `/ecrivain`, `/diocese` (revenus), `/admin/manuscrits`, en français **et** en anglais.
+
+### Données de démonstration ajoutées en base
+
+Un acheteur `fidele.demo@ccc.example` (mot de passe `Fidele-2026`), rattaché à la Paroisse Mont Sinaï
+(diocèse Bénin), 4 ventes payées, 1 remboursée, et un lot `VRS-2026-11-ECR-001` versé avec la
+référence `MM-DEMO-0001`. De quoi montrer des chiffres réels dès l'ouverture.
+
+### Ce qui reste à faire (par ordre d'utilité)
+
+1. **Prestataire de paiement réel** (FedaPay, CinetPay ou Stripe) : webhook signé, frais réels
+   transmis par le prestataire au lieu du forfait de 2 %, gestion des échecs. Tant qu'il n'est pas là,
+   les commissions sont justes mais l'argent n'existe pas.
+2. **Validation des profils écrivains** : le statut existe (`PENDING/APPROVED/REJECTED`) mais aucun
+   écran d'administration ne permet de l'accorder. À ajouter dans `/admin` (30 lignes).
+3. **Versement par bénéficiaire** : aujourd'hui un lot porte **une seule** référence de paiement pour
+   tous ses bénéficiaires. En pratique, un versement mobile money = une transaction par personne : il
+   faut une référence par ligne du lot.
+4. **Multi-devises** : les écrans Finances, écrivain et diocèse calculent en **XOF** uniquement. Les
+   ventes en naira ou en euro sont enregistrées correctement, mais n'apparaissent pas dans ces soldes.
+5. **Export des relevés** (CSV/PDF) pour les écrivains et les diocèses : non fait.
+6. **Remboursement d'un abonnement** : la commande est remboursée et les commissions annulées, mais
+   l'abonnement en cours n'est pas résilié automatiquement — décision humaine à trancher.
+7. **Demande de versement par le bénéficiaire** : aujourd'hui seul l'administrateur prépare les lots.
+8. **Tests automatisés** : les contrôles ci-dessus ont été faits par scripts ponctuels, non conservés.
+   Une suite de tests sur le registre (idempotence, équilibre, remboursement) serait la bienvenue.
+9. **Déploiement** : voir `DEPLOIEMENT.md` — aucun webhook Vercel n'est branché sur le dépôt, donc
+   une poussée sur `main` ne publie rien automatiquement.

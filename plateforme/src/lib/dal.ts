@@ -119,3 +119,9 @@ export const REFERENTIAL_ROLES: StaffRole[] = ["SUPER_ADMIN"];
 
 /** Modération des avis et commentaires (publication immédiate, contrôle a posteriori). */
 export const MODERATION_ROLES: StaffRole[] = ["SUPER_ADMIN", "EDITOR", "SUPPORT"];
+
+/** Commissions, versements et remboursements (lots 4 et 5). */
+export const FINANCE_ROLES: StaffRole[] = ["SUPER_ADMIN", "FINANCE"];
+
+/** Dépôt de manuscrits : comité éditorial (lot 7). */
+export const EDITORIAL_ROLES: StaffRole[] = ["SUPER_ADMIN", "EDITOR"];

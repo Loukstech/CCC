@@ -48,6 +48,9 @@ async function UserNav({ lang }: { lang: Lang }) {
           {t(lang, "nav.admin")}
         </Link>
       )}
+      <Link href="/ecrivain" className={`${link} hidden sm:block`}>
+        {t(lang, "nav.writer")}
+      </Link>
       <Link href="/compte" aria-label={t(lang, "nav.myAccount")} className="hdr-muted mx-1 flex items-center gap-2 text-sm text-muted">
         <span
           aria-hidden

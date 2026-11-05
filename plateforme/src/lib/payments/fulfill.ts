@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
+import { ensureOrderAccounting, reverseOrderAccounting } from "@/lib/ledger";
 
 function addPeriod(from: Date, plan: "MONTHLY" | "YEARLY") {
   const d = new Date(from);
@@ -14,7 +15,7 @@ function addPeriod(from: Date, plan: "MONTHLY" | "YEARLY") {
  * Pour un abonnement, la période s'ajoute à la fin de l'abonnement en cours s'il y en a un.
  */
 export async function markOrderPaid(orderId: string, providerRef?: string): Promise<boolean> {
-  return db.$transaction(async (tx) => {
+  const paid = await db.$transaction(async (tx) => {
     const claimed = await tx.order.updateMany({
       where: { id: orderId, status: "PENDING" },
       data: { status: "PAID", paidAt: new Date(), ...(providerRef ? { providerRef } : {}) },
@@ -52,6 +53,19 @@ export async function markOrderPaid(orderId: string, providerRef?: string): Prom
     }
     return true;
   });
+
+  // Les commissions (lot 4) sont écrites juste après l'encaissement, de façon idempotente : si cette
+  // étape échoue, la réconciliation de l'écran Finances les rattrape sans jamais payer deux fois.
+  if (paid) await ensureOrderAccounting(orderId).catch(() => undefined);
+  return paid;
+}
+
+/**
+ * Rembourse une commande payée : le registre reçoit des contre-écritures négatives, rien n'est effacé.
+ * La résiliation d'un abonnement éventuel reste une décision humaine, prise depuis le compte client.
+ */
+export async function markOrderRefunded(orderId: string): Promise<boolean> {
+  return reverseOrderAccounting(orderId);
 }
 
 export async function markOrderFailed(orderId: string): Promise<boolean> {

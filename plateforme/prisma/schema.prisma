@@ -93,6 +93,12 @@ model User {
 
   /// Œuvres dont ce compte est l'auteur ou le réalisateur (lot 6 : espace écrivain).
   works Work[] @relation("WorkAuthor")
+
+  writerProfile WriterProfile?
+  manuscripts   Manuscript[] @relation("ManuscriptAuthor")
+  /// Écritures de commission dont ce compte est le bénéficiaire (écrivain).
+  ledgerEntries CommissionEntry[] @relation("LedgerUser")
+  payoutItems   PayoutItem[] @relation("PayoutUser")
 }
 
 // Référentiel : un diocèse (par pays) regroupe des paroisses. Aucune paroisse n'est supprimée (voir mergedIntoId).
@@ -106,6 +112,9 @@ model Diocese {
 
   parishes Parish[]
   admins   DioceseAdmin[]
+  /// Part de revenus revenant à ce diocèse (lot 4).
+  ledgerEntries CommissionEntry[] @relation("LedgerDiocese")
+  payoutItems   PayoutItem[] @relation("PayoutDiocese")
 
   @@index([country, active])
 }
@@ -233,13 +242,178 @@ model Order {
   plan      Plan? // renseigné pour une commande d'abonnement
   status    OrderStatus @default(PENDING)
   currency  String
-  amount    Int
+  amount    Int // montant encaissé, frais du prestataire compris
+  /// Frais du prestataire, en points de base de 10 000 (200 = 2 %). Tracés pour ne jamais les oublier.
+  feePpm    Int         @default(0)
+  /// Frais du prestataire en plus petite unité de la devise.
+  feeAmount Int         @default(0)
+  /// Net réellement reçu : amount - feeAmount. C'est la base des commissions.
+  netAmount Int         @default(0)
   provider  String?
   providerRef String?
   createdAt DateTime    @default(now())
   paidAt    DateTime?
+  refundedAt DateTime?
+
+  /// Écritures de commission (lot 4). Immuables : une annulation crée une contre-écriture.
+  ledger CommissionEntry[]
 
   @@index([userId])
+  @@index([status, paidAt])
+}
+
+// ---- Lot 4 : commissions et registre d'écritures ----------------------------------------------
+
+/// Bénéficiaire d'une écriture : l'écrivain (auteur de l'œuvre), le diocèse de l'acheteur, ou la plateforme.
+enum LedgerParty {
+  WRITER
+  DIOCESE
+  PLATFORM
+}
+
+/// Nature d'une écriture. Le registre ne se modifie pas : toute correction est une nouvelle écriture.
+enum LedgerKind {
+  SALE // vente encaissée : part due au bénéficiaire
+  REFUND // remboursement : contre-écriture négative
+  PAYOUT // versement effectué (débit du solde)
+  ADJUSTMENT // correction manuelle motivée
+}
+
+/// Registre des commissions, écriture par écriture (section 12 du cahier des charges).
+model CommissionEntry {
+  id String @id @default(cuid())
+  /// Clé d'idempotence : « sale:<orderId>:writer », « refund:<orderId>:diocese »… Un double
+  /// encaissement ne peut donc pas produire deux fois la même commission.
+  key      String     @unique
+  kind     LedgerKind
+  party    LedgerParty
+  orderId  String?
+  order    Order?     @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  /// Écrivain bénéficiaire. Null pour un diocèse ou la plateforme.
+  beneficiaryUserId String?
+  beneficiaryUser   User?   @relation("LedgerUser", fields: [beneficiaryUserId], references: [id], onDelete: SetNull)
+  /// Diocèse bénéficiaire. Null pour un écrivain ou la plateforme.
+  dioceseId String?
+  diocese   Diocese? @relation("LedgerDiocese", fields: [dioceseId], references: [id], onDelete: SetNull)
+  currency  String
+  /// Montant signé, en plus petite unité : positif = dû au bénéficiaire, négatif = contre-écriture.
+  amount    Int
+  /// Taux retenu, en points de base (7000 = 70 %), pour pouvoir expliquer un calcul des mois après.
+  ratePpm   Int     @default(0)
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([party, beneficiaryUserId, currency, createdAt])
+  @@index([party, dioceseId, currency, createdAt])
+  @@index([orderId])
+  @@index([createdAt])
+}
+
+// ---- Lot 5 : versements (relevés, lots, approbation, référence) --------------------------------
+
+enum PayoutStatus {
+  DRAFT // préparé, encore modifiable
+  APPROVED // validé par un responsable
+  PAID // versé, avec référence de paiement
+  CANCELED // annulé : les montants réservés repartent dans le solde
+}
+
+/// Lot de versement : un bénéficiaire type (écrivains ou diocèses) sur une période.
+model PayoutBatch {
+  id          String       @id @default(cuid())
+  /// Référence lisible unique, ex. « VRS-2026-11-ECR-001 ».
+  reference   String       @unique
+  party       LedgerParty
+  periodStart DateTime
+  periodEnd   DateTime
+  status      PayoutStatus @default(DRAFT)
+  currency    String
+  total       Int          @default(0)
+  createdById String?
+  approvedById String?
+  approvedAt  DateTime?
+  paidAt      DateTime?
+  /// Référence du versement réel (numéro de transaction mobile money, bordereau…).
+  paymentRef  String?
+  note        String?
+  createdAt   DateTime     @default(now())
+
+  items PayoutItem[]
+
+  @@index([party, status, periodEnd])
+  @@index([status, createdAt])
+}
+
+model PayoutItem {
+  id      String      @id @default(cuid())
+  batchId String
+  batch   PayoutBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  party   LedgerParty
+
+  beneficiaryUserId String?
+  beneficiaryUser   User?   @relation("PayoutUser", fields: [beneficiaryUserId], references: [id], onDelete: SetNull)
+  dioceseId         String?
+  diocese           Diocese? @relation("PayoutDiocese", fields: [dioceseId], references: [id], onDelete: SetNull)
+
+  amount Int
+  /// Solde du bénéficiaire au moment de la préparation, pour justifier le montant.
+  balanceBefore Int
+  createdAt DateTime @default(now())
+
+  @@index([batchId])
+  @@index([beneficiaryUserId])
+  @@index([dioceseId])
+}
+
+// ---- Lot 6 : espace écrivain -------------------------------------------------------------------
+
+enum WriterStatus {
+  PENDING // profil soumis, pas encore validé par l'administration
+  APPROVED
+  REJECTED
+}
+
+/// Profil d'auteur/réalisateur : validation éditoriale et coordonnées de versement.
+model WriterProfile {
+  userId String @id
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  penName String?
+  bio     String?
+  status  WriterStatus @default(PENDING)
+  /// Mobile money : réseau (MTN, Moov, Wave…) et numéro qui reçoit les versements.
+  payoutNetwork String?
+  payoutPhone   String?
+  note          String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---- Lot 7 : dépôt de manuscrit (option) --------------------------------------------------------
+
+enum ManuscriptStatus {
+  SUBMITTED
+  REVIEWING
+  ACCEPTED
+  REJECTED
+}
+
+/// Manuscrit proposé par un auteur : titre, résumé et lien vers le fichier (pas d'envoi de fichier
+/// binaire : l'hébergement de démonstration n'a pas de disque inscriptible).
+model Manuscript {
+  id        String   @id @default(cuid())
+  authorId  String
+  author    User     @relation("ManuscriptAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  title     String
+  language  String   @default("fr")
+  synopsis  String?
+  fileUrl   String?
+  status    ManuscriptStatus @default(SUBMITTED)
+  reviewerNote String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([authorId, createdAt])
+  @@index([status, createdAt])
 }
 
 model Subscription {
