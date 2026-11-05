@@ -90,6 +90,9 @@ model User {
   reviews Review[]
   comments Comment[]
   reports  Report[]
+
+  /// Œuvres dont ce compte est l'auteur ou le réalisateur (lot 6 : espace écrivain).
+  works Work[] @relation("WorkAuthor")
 }
 
 // Référentiel : un diocèse (par pays) regroupe des paroisses. Aucune paroisse n'est supprimée (voir mergedIntoId).
@@ -159,6 +162,9 @@ model Work {
   slug        String     @unique
   title       String
   author      String?
+  /// Compte auteur/réalisateur. Le champ `author` reste le nom affiché : il survit à la suppression du compte.
+  authorId    String?
+  authorUser  User?      @relation("WorkAuthor", fields: [authorId], references: [id], onDelete: SetNull)
   description String?
   coverUrl    String?
   language    String     @default("fr")
@@ -186,6 +192,7 @@ model Work {
   commentCount Int   @default(0)
 
   @@index([type, status])
+  @@index([authorId])
 }
 
 // Prix par pays (section 11)

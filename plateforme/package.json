@@ -12,6 +12,7 @@
     "lint": "eslint",
     "db:seed": "tsx prisma/seed.ts",
     "db:dioceses": "tsx prisma/seed-dioceses.ts",
+    "db:comptes": "tsx prisma/seed-comptes.ts",
     "db:covers": "tsx prisma/demo-covers.ts",
     "logos": "node scripts/build-logos.mjs",
     "admin:password": "tsx scripts/set-admin-password.ts",

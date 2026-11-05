@@ -30,6 +30,11 @@ async function LoginContent() {
           <Link href="/inscription" className="font-semibold text-brand underline-offset-4 hover:underline">
             {t(lang, "auth.signup")}
           </Link>
+          <span className="mt-2 block">
+            <Link href="/diocese/inscription" className="font-semibold text-brand underline-offset-4 hover:underline">
+              {t(lang, "dio.loginLink")}
+            </Link>
+          </span>
         </>
       }
     >

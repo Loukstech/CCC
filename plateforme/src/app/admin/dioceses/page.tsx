@@ -8,10 +8,12 @@ import {
   createDiocese,
   createDioceseAdmin,
   createParish,
+  deleteDiocese,
   mergeParish,
   renameParish,
   toggleDiocese,
   toggleParish,
+  updateDiocese,
 } from "@/app/actions/dioceses";
 
 export const metadata = { title: "Diocèses et paroisses — CCC" };
@@ -104,6 +106,28 @@ async function DiocesesContent() {
                       Espace diocèse
                     </Link>
                   </div>
+
+                  <details className="mt-3 text-sm">
+                    <summary className="cursor-pointer list-none text-xs font-semibold text-brand">
+                      Modifier ou supprimer ce diocèse
+                    </summary>
+                    <div className="mt-3 flex flex-col gap-4 rounded-xl bg-paper/50 p-3">
+                      <ActionForm action={updateDiocese} submitLabel="Enregistrer">
+                        <input type="hidden" name="id" value={d.id} />
+                        <Field label="Nom" name="name" defaultValue={d.name} />
+                        <Field label="Code pays" name="country" defaultValue={d.country} hint="2 lettres : BJ, TG, NG" />
+                      </ActionForm>
+                      <div className="border-t border-line pt-3">
+                        <p className="mb-2 text-xs text-muted">
+                          La suppression n’est possible que si aucun fidèle n’est rattaché et qu’aucun compte ne gère
+                          ce diocèse. Sinon, désactivez-le.
+                        </p>
+                        <ActionForm action={deleteDiocese} submitLabel="Supprimer définitivement">
+                          <input type="hidden" name="id" value={d.id} />
+                        </ActionForm>
+                      </div>
+                    </div>
+                  </details>
 
                   <ul className="mt-3 flex flex-col divide-y divide-line">
                     {d.parishes.map((p) => {
