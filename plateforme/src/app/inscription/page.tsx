@@ -3,7 +3,9 @@ import { Suspense } from "react";
 import { ActionForm, Field, SelectField } from "@/components/ActionForm";
 import { AuthShell } from "@/components/AuthShell";
 import { PageFallback } from "@/components/PageFallback";
+import { ParishPicker } from "@/components/ParishPicker";
 import { COUNTRIES, countryName } from "@/lib/countries";
+import { db } from "@/lib/db";
 import { t } from "@/lib/i18n";
 import { getLang } from "@/lib/lang";
 import { signup } from "@/app/actions/auth";
@@ -20,6 +22,21 @@ export default function SignupPage() {
 
 async function SignupContent() {
   const lang = await getLang();
+  // Référentiel complet : diocèses actifs et leurs paroisses actives. Petit volume, chargé une fois.
+  const dioceses = await db.diocese.findMany({
+    where: { active: true },
+    orderBy: { name: "asc" },
+    select: {
+      id: true,
+      name: true,
+      parishes: {
+        where: { active: true },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true, city: true },
+      },
+    },
+  });
+
   return (
     <AuthShell
       lang={lang}
@@ -47,6 +64,22 @@ async function SignupContent() {
             ...COUNTRIES.map((c) => ({ value: c.code, label: countryName(c.code, lang) })),
           ]}
         />
+
+        <ParishPicker
+          dioceses={dioceses}
+          labels={{
+            diocese: t(lang, "auth.diocese"),
+            parish: t(lang, "auth.parish"),
+            chooseDiocese: t(lang, "auth.chooseDiocese"),
+            chooseParish: t(lang, "auth.chooseParish"),
+            chooseParishFirst: t(lang, "auth.chooseParishFirst"),
+          }}
+        />
+
+        <label className="flex items-start gap-2.5 rounded-xl bg-gold-soft/50 p-3 text-xs leading-relaxed text-muted ring-1 ring-line">
+          <input type="checkbox" name="parishConsent" required className="mt-0.5 size-4 shrink-0 accent-brand" />
+          <span>{t(lang, "auth.consent")}</span>
+        </label>
       </ActionForm>
     </AuthShell>
   );

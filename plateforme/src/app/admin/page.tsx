@@ -13,9 +13,26 @@ export default function AdminPage() {
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-12">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-3xl font-semibold text-brand">Administration du catalogue</h1>
-        <Link href="/admin/publicites" className="rounded-lg border border-line px-4 py-2 text-sm font-medium hover:bg-brand/5">
-          Gérer les publicités
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/admin/moderation"
+            className="rounded-lg border border-line px-4 py-2 text-sm font-medium hover:bg-brand/5"
+          >
+            Modération
+          </Link>
+          <Link
+            href="/admin/dioceses"
+            className="rounded-lg border border-line px-4 py-2 text-sm font-medium hover:bg-brand/5"
+          >
+            Diocèses et paroisses
+          </Link>
+          <Link
+            href="/admin/publicites"
+            className="rounded-lg border border-line px-4 py-2 text-sm font-medium hover:bg-brand/5"
+          >
+            Gérer les publicités
+          </Link>
+        </div>
       </div>
       <Suspense fallback={<p className="text-muted">Chargement…</p>}>
         <AdminContent />

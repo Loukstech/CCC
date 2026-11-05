@@ -54,6 +54,12 @@ enum Plan {
   YEARLY
 }
 
+/** Rôle d'un administrateur de diocèse. Le périmètre est porté par la table DioceseAdmin. */
+enum DioceseAdminRole {
+  ADMIN
+  VIEWER
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String?  @unique
@@ -72,6 +78,64 @@ model User {
   progress      Progress[]
   favorites     Favorite[]
   bookmarks     Bookmark[]
+
+  /// Paroisse choisie à l'inscription. Facultatif : les comptes antérieurs et le personnel n'en ont pas.
+  parishId        String?
+  parish          Parish?   @relation(fields: [parishId], references: [id], onDelete: SetNull)
+  /// Horodatage du consentement explicite au partage avec le diocèse (case obligatoire à l'inscription).
+  parishConsentAt DateTime?
+
+  dioceseAdmins DioceseAdmin[]
+
+  reviews Review[]
+  comments Comment[]
+  reports  Report[]
+}
+
+// Référentiel : un diocèse (par pays) regroupe des paroisses. Aucune paroisse n'est supprimée (voir mergedIntoId).
+model Diocese {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  country   String // code ISO : BJ, TG, NG
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  parishes Parish[]
+  admins   DioceseAdmin[]
+
+  @@index([country, active])
+}
+
+model Parish {
+  id        String   @id @default(cuid())
+  dioceseId String
+  diocese   Diocese  @relation(fields: [dioceseId], references: [id], onDelete: Restrict)
+  name      String
+  city      String?
+  active    Boolean  @default(true)
+  /// Paroisse de rattachement si celle-ci a été fusionnée. On ne supprime jamais une paroisse.
+  mergedIntoId String?
+  mergedInto   Parish?  @relation("ParishMerge", fields: [mergedIntoId], references: [id])
+  mergedFrom   Parish[] @relation("ParishMerge")
+  createdAt DateTime @default(now())
+
+  users User[]
+
+  @@unique([dioceseId, name])
+  @@index([dioceseId, active])
+}
+
+// Administrateur d'un diocèse : le périmètre (dioceseId) est porté par la donnée, jamais par l'URL.
+model DioceseAdmin {
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dioceseId String
+  diocese   Diocese @relation(fields: [dioceseId], references: [id], onDelete: Cascade)
+  role      DioceseAdminRole @default(ADMIN)
+  createdAt DateTime @default(now())
+
+  @@id([userId, dioceseId])
 }
 
 // Appareil autorisé (section 13)
@@ -113,6 +177,13 @@ model Work {
   progress  Progress[]
   favorites Favorite[]
   bookmarks Bookmark[]
+  reviews   Review[]
+  comments  Comment[]
+
+  /// Moyennes dénormalisées : recalculées à chaque changement de statut d'un avis ou d'un commentaire.
+  ratingAvg    Float @default(0)
+  ratingCount  Int   @default(0)
+  commentCount Int   @default(0)
 
   @@index([type, status])
 }
@@ -262,4 +333,72 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+}
+
+// Avis et commentaires. Publication immédiate (réponse client) : la modération est a posteriori,
+// déclenchée par un signalement ou par la file d'administration.
+enum ContentStatus {
+  PENDING
+  PUBLISHED
+  HIDDEN
+}
+
+enum ReportTarget {
+  REVIEW
+  COMMENT
+}
+
+enum ReportStatus {
+  OPEN
+  HANDLED
+  DISMISSED
+}
+
+// Un avis par personne et par œuvre, note obligatoire de 1 à 5.
+model Review {
+  id        String        @id @default(cuid())
+  workId    String
+  work      Work          @relation(fields: [workId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating    Int
+  body      String?
+  status    ContentStatus @default(PUBLISHED)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@unique([userId, workId])
+  @@index([workId, status])
+}
+
+model Comment {
+  id        String        @id @default(cuid())
+  workId    String
+  work      Work          @relation(fields: [workId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body      String
+  status    ContentStatus @default(PUBLISHED)
+  /// Réponse à un autre commentaire : un seul niveau, pas d'arborescence profonde.
+  parentId  String?
+  parent    Comment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[]     @relation("CommentReplies")
+  createdAt DateTime      @default(now())
+
+  @@index([workId, status, createdAt])
+}
+
+// Signalement d'un avis ou d'un commentaire. La cible est polymorphe (pas de clé étrangère possible).
+model Report {
+  id         String       @id @default(cuid())
+  targetType ReportTarget
+  targetId   String
+  reporterId String
+  reporter   User         @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  reason     String
+  status     ReportStatus @default(OPEN)
+  createdAt  DateTime     @default(now())
+
+  @@unique([targetType, targetId, reporterId])
+  @@index([status, createdAt])
 }
