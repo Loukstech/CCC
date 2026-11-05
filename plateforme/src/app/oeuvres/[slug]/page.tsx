@@ -5,6 +5,8 @@ import { AdSlot } from "@/components/AdSlot";
 import { Cover } from "@/components/Cover";
 import { PageFallback } from "@/components/PageFallback";
 import { Shelf } from "@/components/Shelf";
+import { WorkRating } from "@/components/WorkRating";
+import { WorkReviews } from "@/components/WorkReviews";
 import { Availability, WorkAction } from "@/components/WorkAction";
 import { countryName } from "@/lib/countries";
 import { t } from "@/lib/i18n";
@@ -88,6 +90,7 @@ async function Work({ params }: { params: PageProps<"/oeuvres/[slug]">["params"]
               {work.title}
             </h1>
             {work.author && <p className="mt-2 text-lg text-white/70">{work.author}</p>}
+            <WorkRating workId={work.id} lang={lang} />
             {work.description && (
               <p className="mt-5 max-w-2xl leading-8 text-white/85">{work.description}</p>
             )}
@@ -134,6 +137,8 @@ async function Work({ params }: { params: PageProps<"/oeuvres/[slug]">["params"]
       </section>
 
       <AdSlot placement="WORK" lang={lang} />
+
+      <WorkReviews workId={work.id} slug={work.slug} lang={lang} userId={user?.id ?? null} />
 
       {related.length > 0 && (
         <Shelf lang={lang} title={t(lang, "work.alsoTitle")} subtitle={t(lang, "work.alsoSub", { space: space[1] })} items={related} />

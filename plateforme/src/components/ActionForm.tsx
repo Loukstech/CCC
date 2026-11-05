@@ -6,6 +6,11 @@ import { t, type Lang } from "@/lib/i18n";
 
 const ValuesContext = createContext<Record<string, string> | undefined>(undefined);
 
+/** Valeurs saisies à réafficher après une erreur, pour un champ qui gère son propre état (ex. liste en cascade). */
+export function useKeptValues() {
+  return useContext(ValuesContext);
+}
+
 export function ActionForm({
   action,
   submitLabel,
@@ -26,6 +31,11 @@ export function ActionForm({
           {state.error}
         </p>
       )}
+      {state?.notice && (
+        <p role="status" className="rounded-xl bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-800 ring-1 ring-emerald-200 whitespace-pre-wrap">
+          {state.notice}
+        </p>
+      )}
       <button
         type="submit"
         disabled={pending}
@@ -37,7 +47,7 @@ export function ActionForm({
   );
 }
 
-const inputClass =
+export const inputClass =
   "h-11 rounded-xl border border-line bg-paper/50 px-3.5 text-base text-ink outline-none transition focus:border-brand-light focus:bg-surface focus:ring-4 focus:ring-brand-light/15";
 
 export function Field({
@@ -75,22 +85,53 @@ export function SelectField({
   label,
   name,
   options,
+  defaultValue,
 }: {
   label: string;
   name: string;
   options: { value: string; label: string }[];
+  defaultValue?: string;
 }) {
   const kept = useContext(ValuesContext);
   return (
     <label className="flex flex-col gap-1 text-sm font-medium text-ink">
       {label}
-      <select name={name} defaultValue={kept?.[name]} className={inputClass}>
+      <select name={name} defaultValue={kept?.[name] ?? defaultValue} className={inputClass}>
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
           </option>
         ))}
       </select>
+    </label>
+  );
+}
+
+/** Zone de texte multiligne (avis, commentaires). */
+export function TextAreaField({
+  label,
+  name,
+  hint,
+  rows = 3,
+  defaultValue,
+}: {
+  label: string;
+  name: string;
+  hint?: string;
+  rows?: number;
+  defaultValue?: string;
+}) {
+  const kept = useContext(ValuesContext);
+  return (
+    <label className="flex flex-col gap-1 text-sm font-medium text-ink">
+      {label}
+      <textarea
+        name={name}
+        rows={rows}
+        defaultValue={kept?.[name] ?? defaultValue}
+        className="rounded-xl border border-line bg-paper/50 px-3.5 py-2.5 text-base text-ink outline-none transition focus:border-brand-light focus:bg-surface focus:ring-4 focus:ring-brand-light/15"
+      />
+      {hint && <span className="text-xs font-normal text-muted">{hint}</span>}
     </label>
   );
 }
