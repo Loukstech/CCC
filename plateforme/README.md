@@ -67,6 +67,7 @@ Compte administrateur de démonstration : `admin@ccc.local` / `admin-ccc-dev-202
 | `npm run db:up` | Démarre la base PostgreSQL locale (Docker) |
 | `npm run db:migrate` | Crée une migration après un changement du schéma |
 | `npm run db:seed` | Données de démonstration |
+| `npm run db:dioceses` | Référentiel des diocèses et paroisses (idempotent, à lancer après une migration) |
 | `npm run admin:password` | Change le mot de passe administrateur |
 
 ## Langues, devises, publicités
@@ -76,6 +77,9 @@ Compte administrateur de démonstration : `admin@ccc.local` / `admin-ccc-dev-202
 - **Pays** : liste dans `src/lib/countries.ts` (30 pays). Une œuvre n'est visible que dans les pays de sa licence.
 - **Publicités** : quatre emplacements (accueil, pages catalogue, fiche d'œuvre, bandeau fixe en bas de l'écran). On les gère dans Administration > Gérer les publicités. Chaque bandeau porte la mention « Publicité » et les clics sont comptés.
 - **Lecture à voix haute** : dans le lecteur de livres, le bouton casque lit le livre avec la voix du navigateur (vitesse réglable). Ce n'est pas un livre audio enregistré.
+- **Diocèses et paroisses** : à l'inscription, le fidèle choisit son diocèse puis sa paroisse, et accepte le partage de son inscription avec son diocèse. Le référentiel se gère dans Administration > Diocèses et paroisses (super-administrateur). Une paroisse n'est jamais supprimée : elle est désactivée ou fusionnée dans une autre, ce qui réaffecte ses fidèles.
+- **Espace diocèse** : chaque diocèse peut recevoir un compte de consultation sur `/diocese` (totaux, répartition par paroisse, liste des fidèles, export CSV). Le compte se crée dans Administration > Diocèses et paroisses : le mot de passe provisoire s'affiche **une seule fois**, à communiquer de vive voix. Deux rôles : administrateur (export autorisé) et observateur (lecture seule). Un administrateur de diocèse ne voit que son diocèse, même en modifiant l'adresse de la page, et n'a accès à aucun autre écran d'administration.
+- **Avis et commentaires** : un avis par personne et par œuvre, note de 1 à 5 obligatoire ; commentaires avec une réponse possible. La publication est immédiate et le contrôle se fait après coup, par signalement puis Administration > Modération.
 
 ## Mettre à jour la base de données
 
