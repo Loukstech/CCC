@@ -35,7 +35,14 @@ un client, prenez l'offre **Pro** (environ 20 $ par mois, résiliable après la 
 4. **Deploy.** La région des fonctions est déjà réglée sur Francfort (`vercel.json`), à côté de la base Neon.
 5. Ouvrir l'adresse fournie et dérouler le parcours de démonstration ci-dessous.
 
-Chaque modification poussée sur GitHub redéploie automatiquement le site.
+Le redéploiement automatique à chaque poussée **n'est pas garanti** : il dépend de l'intégration Git
+Vercel ↔ GitHub. Le 5 novembre 2026 au soir, le dépôt `Loukstech/CCC` ne portait **aucun webhook
+Vercel** : deux poussées successives (`143b01a`, `338d1e2`, puis `8dc2d9d`) n'ont pas été publiées.
+Dans ce cas, le site reste figé sur une version antérieure.
+
+Pour publier à coup sûr : ouvrir le tableau de bord Vercel → projet → **Deployments**, vérifier que
+le dernier commit est bien celui de `main`, sinon **Redeploy**. Si aucun déploiement n'apparaît,
+reconnecter le dépôt dans Settings → Git (l'intégration a probablement été retirée).
 
 ## Parcours à montrer au client
 

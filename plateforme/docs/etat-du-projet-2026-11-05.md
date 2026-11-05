@@ -141,14 +141,20 @@ Contrôles systématiques : `tsc --noEmit`, `eslint`, `next build`.
 | `d92c6f6` | Diocèses et paroisses : inscription en cascade, consentement, administration du référentiel |
 | `0d83a3e` | Avis et commentaires : notes, réponses, signalements et modération a posteriori |
 | `a40b6d8` | Espace diocèse : consultation des inscrits, export CSV et comptes diocésains |
+| `6cde03f` | Comptes de démonstration, auteur des œuvres, accès diocésain autonome |
+| `143b01a` | Retrait des mentions de démonstration dans les titres et descriptions |
+| `338d1e2` | Gestion des comptes diocésains : liste, rôle, désactivation, mot de passe |
+| `8dc2d9d` | Administration bilingue, lecture à voix haute naturelle, paiement de démo retiré du parcours |
 
 **Base de données** : Neon, partagée entre la machine locale et le site en ligne. Les deux
 migrations sont appliquées. Les scripts de test ont supprimé leurs propres comptes `e2e-*`, avis,
 commentaires et signalements, et recalculé les compteurs : la base ne contient plus de données de
 test.
 
-**Déploiement** : Vercel, automatique à chaque poussée sur `main`. Après une poussée, comptez
-quelques minutes de propagation avant que toutes les nouvelles routes répondent.
+**Déploiement** : Vercel. Le redéploiement automatique à chaque poussée n'est **pas** confirmé : le
+dépôt ne porte aucun webhook Vercel, et le site en ligne ne servait pas encore `8dc2d9d` le 5 novembre
+au soir. À publier depuis le tableau de bord Vercel (Deployments → Redeploy), puis à vérifier en
+ouvrant `/paiement/indisponible`, qui n'existe que dans cette version. Voir `DEPLOIEMENT.md`.
 
 ## 6. Ce qui reste à faire
 
