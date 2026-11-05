@@ -5,6 +5,8 @@ Next.js 16 · TypeScript · Prisma 7 · PostgreSQL.
 
 Cahier des charges : `../Cahier_des_charges_CCC_v1.0.pdf`. Mise en ligne de démonstration : [DEPLOIEMENT.md](DEPLOIEMENT.md).
 
+**Où en est le projet ?** Voir [docs/etat-du-projet-2026-11-05.md](docs/etat-du-projet-2026-11-05.md) : ce qui est livré et vérifié, ce qui a été corrigé, ce qui reste à faire et les décisions en attente.
+
 ## Démarrer sur un nouvel ordinateur
 
 Il faut : **Node.js 20.9 ou plus** (testé avec la version 24), **Docker Desktop** (pour la base locale) et Git.
