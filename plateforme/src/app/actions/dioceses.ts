@@ -39,17 +39,18 @@ const refresh = () => {
 /** Un diocèse peut être renommé et son pays corrigé ; le slug reste stable (liens et historique). */
 export async function updateDiocese(_: FormState, formData: FormData): Promise<FormState> {
   const user = await requireStaff(REFERENTIAL_ROLES);
+  const lang = await getLang();
   const values = keep(formData, ["id", "name", "country"]);
   const id = values.id;
   const name = values.name.trim();
   const country = values.country.trim().toUpperCase();
 
-  if (!id) return { error: "Diocèse inconnu.", values };
-  if (name.length < 3) return { error: "Indiquez le nom du diocèse.", values };
-  if (!/^[A-Z]{2}$/.test(country)) return { error: "Code pays invalide (2 lettres, ex. BJ).", values };
+  if (!id) return { error: t(lang, "dioAdm.errDiocese"), values };
+  if (name.length < 3) return { error: t(lang, "dioAdm.errName"), values };
+  if (!/^[A-Z]{2}$/.test(country)) return { error: t(lang, "dioAdm.errCountry"), values };
 
   const current = await db.diocese.findUnique({ where: { id }, select: { name: true, country: true } });
-  if (!current) return { error: "Diocèse inconnu.", values };
+  if (!current) return { error: t(lang, "dioAdm.errDiocese"), values };
 
   await db.diocese.update({ where: { id }, data: { name, country } });
   await db.auditLog.create({
@@ -61,7 +62,7 @@ export async function updateDiocese(_: FormState, formData: FormData): Promise<F
     },
   });
   refresh();
-  return { notice: "Diocèse mis à jour." };
+  return { notice: t(lang, "dioAdm.updated") };
 }
 
 /**
@@ -70,8 +71,9 @@ export async function updateDiocese(_: FormState, formData: FormData): Promise<F
  */
 export async function deleteDiocese(_: FormState, formData: FormData): Promise<FormState> {
   const user = await requireStaff(REFERENTIAL_ROLES);
+  const lang = await getLang();
   const id = String(formData.get("id") ?? "");
-  if (!id) return { error: "Diocèse inconnu." };
+  if (!id) return { error: t(lang, "dioAdm.errDiocese") };
 
   const diocese = await db.diocese.findUnique({
     where: { id },
@@ -81,19 +83,14 @@ export async function deleteDiocese(_: FormState, formData: FormData): Promise<F
       parishes: { select: { _count: { select: { users: true } } } },
     },
   });
-  if (!diocese) return { error: "Diocèse inconnu." };
+  if (!diocese) return { error: t(lang, "dioAdm.errDiocese") };
 
   const members = diocese.parishes.reduce((n, p) => n + p._count.users, 0);
   if (members > 0) {
-    return {
-      error: `Suppression impossible : ${members} fidèle(s) sont encore rattaché(s) à ce diocèse. Désactivez-le à la place.`,
-    };
+    return { error: t(lang, "dioAdm.errDeleteMembers", { n: members }) };
   }
   if (diocese._count.admins > 0) {
-    return {
-      error:
-        "Suppression impossible : un compte administrateur gère encore ce diocèse. Supprimez ou désactivez ce compte d'abord.",
-    };
+    return { error: t(lang, "dioAdm.errDeleteAdmins") };
   }
 
   await db.$transaction(async (tx) => {
@@ -109,7 +106,7 @@ export async function deleteDiocese(_: FormState, formData: FormData): Promise<F
     });
   });
   refresh();
-  return { notice: `Diocèse « ${diocese.name} » supprimé.` };
+  return { notice: t(lang, "dioAdm.deleted", { name: diocese.name }) };
 }
 
 /**
@@ -170,12 +167,13 @@ export async function registerDioceseAccount(_: FormState, formData: FormData): 
 
 export async function createDiocese(_: FormState, formData: FormData): Promise<FormState> {
   const user = await requireStaff(REFERENTIAL_ROLES);
+  const lang = await getLang();
   const values = keep(formData, ["name", "country"]);
   const name = values.name.trim();
   const country = values.country.trim().toUpperCase();
 
-  if (name.length < 3) return { error: "Indiquez le nom du diocèse.", values };
-  if (!/^[A-Z]{2}$/.test(country)) return { error: "Code pays invalide (2 lettres, ex. BJ).", values };
+  if (name.length < 3) return { error: t(lang, "dioAdm.errName"), values };
+  if (!/^[A-Z]{2}$/.test(country)) return { error: t(lang, "dioAdm.errCountry"), values };
 
   const d = await db.diocese.create({
     data: { name, country, slug: await uniqueSlug(name) },
@@ -190,18 +188,19 @@ export async function createDiocese(_: FormState, formData: FormData): Promise<F
 
 export async function createParish(_: FormState, formData: FormData): Promise<FormState> {
   const user = await requireStaff(REFERENTIAL_ROLES);
+  const lang = await getLang();
   const values = keep(formData, ["dioceseId", "name", "city"]);
   const name = values.name.trim();
   const city = values.city.trim();
 
-  if (!values.dioceseId) return { error: "Choisissez le diocèse.", values };
-  if (name.length < 3) return { error: "Indiquez le nom de la paroisse.", values };
+  if (!values.dioceseId) return { error: t(lang, "dioAdm.errChooseDiocese"), values };
+  if (name.length < 3) return { error: t(lang, "dioAdm.errParishName"), values };
 
   const diocese = await db.diocese.findUnique({ where: { id: values.dioceseId }, select: { id: true } });
-  if (!diocese) return { error: "Diocèse inconnu.", values };
+  if (!diocese) return { error: t(lang, "dioAdm.errDiocese"), values };
 
   const exists = await db.parish.findFirst({ where: { dioceseId: diocese.id, name }, select: { id: true } });
-  if (exists) return { error: "Une paroisse porte déjà ce nom dans ce diocèse.", values };
+  if (exists) return { error: t(lang, "dioAdm.errParishExists"), values };
 
   const p = await db.parish.create({
     data: { dioceseId: diocese.id, name, city: city || null },
@@ -216,22 +215,23 @@ export async function createParish(_: FormState, formData: FormData): Promise<Fo
 
 export async function renameParish(_: FormState, formData: FormData): Promise<FormState> {
   const user = await requireStaff(REFERENTIAL_ROLES);
+  const lang = await getLang();
   const values = keep(formData, ["id", "name", "city"]);
   const id = values.id;
   const name = values.name.trim();
   const city = values.city.trim();
 
-  if (!id) return { error: "Paroisse inconnue.", values };
-  if (name.length < 3) return { error: "Indiquez le nom de la paroisse.", values };
+  if (!id) return { error: t(lang, "dioAdm.errParish"), values };
+  if (name.length < 3) return { error: t(lang, "dioAdm.errParishName"), values };
 
   const current = await db.parish.findUnique({ where: { id }, select: { dioceseId: true, name: true, city: true } });
-  if (!current) return { error: "Paroisse inconnue.", values };
+  if (!current) return { error: t(lang, "dioAdm.errParish"), values };
 
   const clash = await db.parish.findFirst({
     where: { dioceseId: current.dioceseId, name, id: { not: id } },
     select: { id: true },
   });
-  if (clash) return { error: "Une autre paroisse porte déjà ce nom dans ce diocèse.", values };
+  if (clash) return { error: t(lang, "dioAdm.errParishClash"), values };
 
   await db.parish.update({ where: { id }, data: { name, city: city || null } });
   await db.auditLog.create({
@@ -332,22 +332,20 @@ async function activeAdminCount(dioceseId: string, exceptUserId?: string): Promi
 /** Change le rôle d'un compte diocésain. On refuse de retirer le dernier administrateur actif. */
 export async function updateDioceseAdminRole(_: FormState, formData: FormData): Promise<FormState> {
   const actor = await requireStaff(REFERENTIAL_ROLES);
+  const lang = await getLang();
   const userId = String(formData.get("userId") ?? "");
   const role = formData.get("role") === "VIEWER" ? "VIEWER" : "ADMIN";
-  if (!userId) return { error: "Compte inconnu." };
+  if (!userId) return { error: t(lang, "dioAdm.errAccount") };
 
   const membership = await db.dioceseAdmin.findFirst({
     where: { userId },
     select: { dioceseId: true, role: true, user: { select: { name: true, email: true } } },
   });
-  if (!membership) return { error: "Ce compte ne gère aucun diocèse." };
-  if (membership.role === role) return { notice: "Le rôle est déjà celui demandé." };
+  if (!membership) return { error: t(lang, "dioAdm.errNoMembership") };
+  if (membership.role === role) return { notice: t(lang, "dioAdm.roleUnchanged") };
 
   if (role === "VIEWER" && (await activeAdminCount(membership.dioceseId, userId)) === 0) {
-    return {
-      error:
-        "Impossible : ce compte est le dernier administrateur actif de ce diocèse. Nommez un autre administrateur d'abord, sinon l'espace deviendrait ingérable.",
-    };
+    return { error: t(lang, "dioAdm.errLastAdminDemote") };
   }
 
   await db.dioceseAdmin.updateMany({ where: { userId, dioceseId: membership.dioceseId }, data: { role } });
@@ -361,9 +359,10 @@ export async function updateDioceseAdminRole(_: FormState, formData: FormData): 
   });
   refresh();
   return {
-    notice: `${membership.user.name ?? membership.user.email ?? "Le compte"} est maintenant ${
-      role === "ADMIN" ? "administrateur" : "observateur"
-    } de son diocèse.`,
+    notice: t(lang, "dioAdm.roleChanged", {
+      name: membership.user.name ?? membership.user.email ?? t(lang, "dioAdm.thisAccount"),
+      role: role === "ADMIN" ? t(lang, "dioAdm.roleAdminWord") : t(lang, "dioAdm.roleViewerWord"),
+    }),
   };
 }
 
@@ -373,8 +372,9 @@ export async function updateDioceseAdminRole(_: FormState, formData: FormData): 
  */
 export async function toggleDioceseAdmin(_: FormState, formData: FormData): Promise<FormState> {
   const actor = await requireStaff(REFERENTIAL_ROLES);
+  const lang = await getLang();
   const userId = String(formData.get("userId") ?? "");
-  if (!userId) return { error: "Compte inconnu." };
+  if (!userId) return { error: t(lang, "dioAdm.errAccount") };
 
   const membership = await db.dioceseAdmin.findFirst({
     where: { userId },
@@ -384,17 +384,14 @@ export async function toggleDioceseAdmin(_: FormState, formData: FormData): Prom
       user: { select: { name: true, email: true, disabledAt: true, staffRole: true } },
     },
   });
-  if (!membership) return { error: "Ce compte ne gère aucun diocèse." };
+  if (!membership) return { error: t(lang, "dioAdm.errNoMembership") };
   if (membership.user.staffRole) {
-    return { error: "Ce compte est aussi membre du personnel : gérez-le depuis les comptes du personnel." };
+    return { error: t(lang, "dioAdm.errStaff") };
   }
 
   const disable = !membership.user.disabledAt;
   if (disable && membership.role === "ADMIN" && (await activeAdminCount(membership.dioceseId, userId)) === 0) {
-    return {
-      error:
-        "Impossible : ce compte est le dernier administrateur actif de ce diocèse. Créez un autre administrateur avant de le désactiver.",
-    };
+    return { error: t(lang, "dioAdm.errLastAdminDisable") };
   }
 
   await db.user.update({ where: { id: userId }, data: { disabledAt: disable ? new Date() : null } });
@@ -408,25 +405,26 @@ export async function toggleDioceseAdmin(_: FormState, formData: FormData): Prom
   });
   refresh();
   return {
-    notice: disable
-      ? `Compte de ${membership.user.name ?? membership.user.email ?? "l'administrateur"} désactivé : il ne peut plus se connecter.`
-      : `Compte de ${membership.user.name ?? membership.user.email ?? "l'administrateur"} réactivé.`,
+    notice: t(lang, disable ? "dioAdm.accountDisabled" : "dioAdm.accountEnabled", {
+      name: membership.user.name ?? membership.user.email ?? t(lang, "dioAdm.theAdministrator"),
+    }),
   };
 }
 
 /** Réinitialise le mot de passe d'un compte diocésain. Le provisoire n'est affiché qu'une seule fois. */
 export async function resetDioceseAdminPassword(_: FormState, formData: FormData): Promise<FormState> {
   const actor = await requireStaff(REFERENTIAL_ROLES);
+  const lang = await getLang();
   const userId = String(formData.get("userId") ?? "");
-  if (!userId) return { error: "Compte inconnu." };
+  if (!userId) return { error: t(lang, "dioAdm.errAccount") };
 
   const membership = await db.dioceseAdmin.findFirst({
     where: { userId },
     select: { dioceseId: true, user: { select: { name: true, email: true, disabledAt: true } } },
   });
-  if (!membership) return { error: "Ce compte ne gère aucun diocèse." };
+  if (!membership) return { error: t(lang, "dioAdm.errNoMembership") };
   if (membership.user.disabledAt) {
-    return { error: "Ce compte est désactivé : réactivez-le avant de réinitialiser son mot de passe." };
+    return { error: t(lang, "dioAdm.errDisabledReset") };
   }
 
   const tempPassword = generateTempPassword();
@@ -441,30 +439,32 @@ export async function resetDioceseAdminPassword(_: FormState, formData: FormData
   });
   refresh();
   return {
-    notice: `Nouveau mot de passe provisoire pour ${
-      membership.user.name ?? membership.user.email ?? "ce compte"
-    } :\n${tempPassword}\nNotez-le maintenant : il ne sera plus affiché.`,
+    notice: t(lang, "dioAdm.pwReset", {
+      name: membership.user.name ?? membership.user.email ?? t(lang, "dioAdm.thisAccount"),
+      password: tempPassword,
+    }),
   };
 }
 
 /** Crée un administrateur diocésain. Le mot de passe provisoire est affiché une seule fois, à copier. */
 export async function createDioceseAdmin(_: FormState, formData: FormData): Promise<FormState> {
   const user = await requireStaff(REFERENTIAL_ROLES);
+  const lang = await getLang();
   const values = keep(formData, ["email", "name", "dioceseId", "role"]);
   const email = values.email.trim().toLowerCase();
   const name = values.name.trim();
   const dioceseId = values.dioceseId;
   const role = values.role === "VIEWER" ? "VIEWER" : "ADMIN";
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Email invalide.", values };
-  if (name.length < 2) return { error: "Indiquez le nom.", values };
-  if (!dioceseId) return { error: "Choisissez le diocèse.", values };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: t(lang, "dioAdm.errEmail"), values };
+  if (name.length < 2) return { error: t(lang, "dioAdm.errNameShort"), values };
+  if (!dioceseId) return { error: t(lang, "dioAdm.errChooseDiocese"), values };
 
   const diocese = await db.diocese.findUnique({ where: { id: dioceseId }, select: { id: true, name: true } });
-  if (!diocese) return { error: "Diocèse inconnu.", values };
+  if (!diocese) return { error: t(lang, "dioAdm.errDiocese"), values };
 
   const existing = await db.user.findUnique({ where: { email }, select: { id: true } });
-  if (existing) return { error: "Cet email est déjà utilisé.", values };
+  if (existing) return { error: t(lang, "dioAdm.errEmailTaken"), values };
 
   const tempPassword = generateTempPassword();
 
@@ -493,7 +493,12 @@ export async function createDioceseAdmin(_: FormState, formData: FormData): Prom
 
   refresh();
   return {
-    notice: `Compte créé pour ${name} (${diocese.name}, ${role === "ADMIN" ? "administrateur" : "observateur"}).\nMot de passe provisoire : ${tempPassword}\nCommuniquez-le de vive voix : il ne sera plus affiché.`,
+    notice: t(lang, "dioAdm.created", {
+      name,
+      diocese: diocese.name,
+      role: role === "ADMIN" ? t(lang, "dioAdm.roleAdminWord") : t(lang, "dioAdm.roleViewerWord"),
+      password: tempPassword,
+    }),
     values: { email: "", name: "", dioceseId, role },
   };
 }

@@ -5,7 +5,6 @@ import { getCurrentUser } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { authorizeRead } from "@/lib/reading";
 import { getLang } from "@/lib/lang";
-import { t } from "@/lib/i18n";
 
 export const metadata = { title: "Lecture — CCC" };
 

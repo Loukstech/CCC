@@ -23,13 +23,22 @@ export function AdBanner({ ads, lang, variant = "banner" }: { ads: AdItem[]; lan
   const [closed, setClosed] = useState(variant === "sticky");
 
   useEffect(() => {
-    if (ads.length > 1) setIndex(Math.floor(Math.random() * ads.length));
-    if (variant !== "sticky") return;
-    try {
-      setClosed(sessionStorage.getItem(DISMISS_KEY) === "1");
-    } catch {
-      setClosed(false);
-    }
+    // Tirage au hasard et lecture du stockage : faits hors du rendu, après l'hydratation, pour ne pas
+    // provoquer de rendu en cascade ni de décalage entre le HTML du serveur et celui du client.
+    let alive = true;
+    queueMicrotask(() => {
+      if (!alive) return;
+      if (ads.length > 1) setIndex(Math.floor(Math.random() * ads.length));
+      if (variant !== "sticky") return;
+      try {
+        setClosed(sessionStorage.getItem(DISMISS_KEY) === "1");
+      } catch {
+        setClosed(false);
+      }
+    });
+    return () => {
+      alive = false;
+    };
   }, [ads.length, variant]);
 
   const ad = ads[index] ?? ads[0];

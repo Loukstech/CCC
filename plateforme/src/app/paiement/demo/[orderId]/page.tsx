@@ -6,8 +6,9 @@ import { getCurrentUser } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { t } from "@/lib/i18n";
 import { getLang } from "@/lib/lang";
+import { demoCheckoutVisible } from "@/lib/payments";
 
-export const metadata = { title: "Paiement de démonstration — CCC" };
+export const metadata = { title: "Paiement — CCC" };
 
 export default function DemoCheckoutPage({ params }: PageProps<"/paiement/demo/[orderId]">) {
   return (
@@ -21,6 +22,8 @@ export default function DemoCheckoutPage({ params }: PageProps<"/paiement/demo/[
 
 async function Checkout({ params }: { params: PageProps<"/paiement/demo/[orderId]">["params"] }) {
   const lang = await getLang();
+  // Page fermée par défaut : elle ne doit pas être montrée à un client (voir lib/payments).
+  if (!demoCheckoutVisible) notFound();
   const { orderId } = await params;
   const user = await getCurrentUser();
   if (!user) redirect("/connexion");

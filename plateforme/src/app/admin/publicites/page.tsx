@@ -3,49 +3,56 @@ import { Suspense } from "react";
 import { ActionForm, Field, SelectField } from "@/components/ActionForm";
 import { AD_ROLES, requireStaff } from "@/lib/dal";
 import { db } from "@/lib/db";
+import { t, type Lang } from "@/lib/i18n";
+import { getLang } from "@/lib/lang";
 import { createAd, deleteAd, toggleAd } from "@/app/actions/ads";
 
-export const metadata = { title: "Publicités — CCC" };
+// Écran authentifié et bilingue : il lit les cookies (langue, session), donc il ne peut pas être prérendu.
+export const instant = false;
 
-const PLACEMENT_LABEL = {
-  HOME: "Accueil (bandeau)",
-  CATALOG: "Pages Livres, Documentaires, Films (bandeau)",
-  WORK: "Fiche d’une œuvre (bandeau)",
-  STICKY: "Bandeau fixe en bas de l’écran",
+export async function generateMetadata() {
+  const lang = await getLang();
+  return { title: `${t(lang, "adsAdm.title")} — CCC` };
+}
+
+const PLACEMENTS = ["HOME", "CATALOG", "WORK", "STICKY"] as const;
+const PLACEMENT_KEY = {
+  HOME: "adsAdm.placement.HOME",
+  CATALOG: "adsAdm.placement.CATALOG",
+  WORK: "adsAdm.placement.WORK",
+  STICKY: "adsAdm.placement.STICKY",
 } as const;
 
-export default function AdsAdminPage() {
+export default async function AdsAdminPage() {
+  const lang = await getLang();
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-12">
       <Link href="/admin" className="text-sm text-muted hover:text-brand">
-        ← Administration
+        {t(lang, "mod.back")}
       </Link>
-      <h1 className="mt-2 mb-2 font-display text-3xl font-semibold text-brand">Publicités</h1>
-      <p className="mb-6 max-w-2xl text-sm text-muted">
-        Chaque publicité est affichée avec la mention « Publicité » à l’emplacement choisi. Vérifiez le contenu avant
-        de l’activer : il doit respecter l’esprit de la plateforme et la loi.
-      </p>
-      <Suspense fallback={<p className="text-muted">Chargement…</p>}>
+      <h1 className="mt-2 mb-2 font-display text-3xl font-semibold text-brand">{t(lang, "adsAdm.title")}</h1>
+      <p className="mb-6 max-w-2xl text-sm text-muted">{t(lang, "adsAdm.lead")}</p>
+      <Suspense fallback={<p className="text-muted">{t(lang, "adm.loading")}</p>}>
         <AdsContent />
       </Suspense>
     </main>
   );
 }
 
-const fmt = (d: Date | null) => (d ? d.toLocaleDateString("fr-FR", { timeZone: "UTC" }) : "—");
+const date = (d: Date | null, lang: Lang) =>
+  d ? d.toLocaleDateString(lang === "fr" ? "fr-FR" : "en-GB", { timeZone: "UTC" }) : "—";
 
 async function AdsContent() {
   await requireStaff(AD_ROLES);
+  const lang = await getLang();
   const ads = await db.ad.findMany({ orderBy: { createdAt: "desc" } });
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
       <section>
-        <h2 className="mb-3 font-display text-xl font-semibold text-brand">Publicités ({ads.length})</h2>
+        <h2 className="mb-3 font-display text-xl font-semibold text-brand">{t(lang, "adsAdm.list", { n: ads.length })}</h2>
         {ads.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-line bg-surface p-6 text-muted">
-            Aucune publicité. Ajoutez-en une avec le formulaire : elle apparaîtra à l’emplacement choisi.
-          </p>
+          <p className="rounded-2xl border border-dashed border-line bg-surface p-6 text-muted">{t(lang, "adsAdm.empty")}</p>
         ) : (
           <ul className="flex flex-col gap-3">
             {ads.map((a) => (
@@ -54,12 +61,13 @@ async function AdsContent() {
                   <div className="min-w-0">
                     <p className="font-semibold text-ink">{a.title}</p>
                     <p className="text-xs text-muted">
-                      {a.advertiser} · {PLACEMENT_LABEL[a.placement]}
+                      {a.advertiser} · {t(lang, PLACEMENT_KEY[a.placement])}
                     </p>
                     <p className="mt-1 text-xs text-muted">
-                      Du {fmt(a.startsAt)} au {fmt(a.endsAt)} · {a.clicks} clic(s) ·{" "}
+                      {t(lang, "adsAdm.dates", { from: date(a.startsAt, lang), to: date(a.endsAt, lang) })} ·{" "}
+                      {t(lang, "adsAdm.clicks", { n: a.clicks })} ·{" "}
                       <span className={a.active ? "font-semibold text-emerald-600" : "font-semibold text-amber-600"}>
-                        {a.active ? "active" : "désactivée"}
+                        {a.active ? t(lang, "adsAdm.active") : t(lang, "adsAdm.inactive")}
                       </span>
                     </p>
                   </div>
@@ -68,13 +76,13 @@ async function AdsContent() {
                       <input type="hidden" name="id" value={a.id} />
                       <input type="hidden" name="active" value={a.active ? "false" : "true"} />
                       <button type="submit" className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium hover:bg-brand/5">
-                        {a.active ? "Désactiver" : "Activer"}
+                        {a.active ? t(lang, "adsAdm.deactivate") : t(lang, "adsAdm.activate")}
                       </button>
                     </form>
                     <form action={deleteAd}>
                       <input type="hidden" name="id" value={a.id} />
                       <button type="submit" className="rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50">
-                        Supprimer
+                        {t(lang, "adsAdm.delete")}
                       </button>
                     </form>
                   </div>
@@ -86,23 +94,20 @@ async function AdsContent() {
       </section>
 
       <section className="h-fit rounded-2xl border border-line bg-surface p-5">
-        <h2 className="mb-4 font-display text-xl font-semibold text-brand">Ajouter une publicité</h2>
-        <ActionForm action={createAd} submitLabel="Enregistrer">
+        <h2 className="mb-4 font-display text-xl font-semibold text-brand">{t(lang, "adsAdm.add")}</h2>
+        <ActionForm action={createAd} submitLabel={t(lang, "adm.save")} lang={lang}>
           <SelectField
-            label="Emplacement"
+            label={t(lang, "adsAdm.placement")}
             name="placement"
-            options={(Object.keys(PLACEMENT_LABEL) as (keyof typeof PLACEMENT_LABEL)[]).map((k) => ({
-              value: k,
-              label: PLACEMENT_LABEL[k],
-            }))}
+            options={PLACEMENTS.map((k) => ({ value: k, label: t(lang, PLACEMENT_KEY[k]) }))}
           />
-          <Field label="Titre" name="title" />
-          <Field label="Annonceur" name="advertiser" />
-          <Field label="Texte court" name="text" required={false} hint="Facultatif. Sinon le nom de l’annonceur est affiché." />
-          <Field label="Adresse de l’image" name="imageUrl" required={false} hint="Facultatif. Lien https:// d’une image (format paysage)." />
-          <Field label="Lien de destination" name="linkUrl" hint="Où mène un clic. Doit commencer par https://" />
-          <Field label="Début de diffusion" name="startsAt" type="date" required={false} />
-          <Field label="Fin de diffusion" name="endsAt" type="date" required={false} />
+          <Field label={t(lang, "adsAdm.titleField")} name="title" />
+          <Field label={t(lang, "adsAdm.advertiser")} name="advertiser" />
+          <Field label={t(lang, "adsAdm.text")} name="text" required={false} hint={t(lang, "adsAdm.hintText")} />
+          <Field label={t(lang, "adsAdm.image")} name="imageUrl" required={false} hint={t(lang, "adsAdm.hintImage")} />
+          <Field label={t(lang, "adsAdm.link")} name="linkUrl" hint={t(lang, "adsAdm.hintLink")} />
+          <Field label={t(lang, "adsAdm.startsAt")} name="startsAt" type="date" required={false} />
+          <Field label={t(lang, "adsAdm.endsAt")} name="endsAt" type="date" required={false} />
         </ActionForm>
       </section>
     </div>

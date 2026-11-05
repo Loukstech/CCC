@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Book, EpubCFI as EpubCFIType, NavItem, Rendition } from "epubjs";
 import { BookmarkIcon, ChevronIcon, HeadsetIcon } from "@/components/icons";
 import { t as tr, type Lang } from "@/lib/i18n";
+import { loadVoices, rankVoices, speechSupported, type VoiceChoice } from "@/lib/tts";
 
 type ThemeName = "paper" | "sepia" | "night";
 type Bookmark = { id: string; locator: string; label: string | null; percent: number };
@@ -64,7 +65,7 @@ export function EpubReader({ workId, slug, title, lang, bookLanguage, initialLoc
   const [size, setSize] = useState(110);
   const [percent, setPercent] = useState(initialPercent);
   const [toc, setToc] = useState<NavItem[]>([]);
-  const [panel, setPanel] = useState<"toc" | "marks" | null>(null);
+  const [panel, setPanel] = useState<"toc" | "marks" | "voice" | null>(null);
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [here, setHere] = useState<Here | null>(null);
   const [compare, setCompare] = useState<Compare | null>(null);
@@ -80,14 +81,44 @@ export function EpubReader({ workId, slug, title, lang, bookLanguage, initialLoc
   const advancing = useRef(false);
   const lastCfi = useRef("");
   const restart = useRef<(() => void) | null>(null);
+  const speakRef = useRef<(() => void) | null>(null);
+  // Voix compatibles avec la langue du livre, la plus naturelle en premier (voix Google ou « Natural »).
+  const [voices, setVoices] = useState<VoiceChoice[]>([]);
+  const [voiceURI, setVoiceURI] = useState<string | null>(null);
+  const [noVoice, setNoVoice] = useState(false);
+  const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
 
   useEffect(() => {
-    setCanSpeak("speechSynthesis" in window && "SpeechSynthesisUtterance" in window);
+    if (!speechSupported()) return;
+    let alive = true;
+    // Le serveur ne peut pas savoir si l'appareil sait parler : l'affichage bascule après hydratation.
+    queueMicrotask(() => {
+      if (alive) setCanSpeak(true);
+    });
+
+    // Le navigateur remplit sa liste de voix de façon asynchrone : on attend, puis on garde la plus naturelle.
+    void loadVoices().then((all) => {
+      if (!alive) return;
+      const ranked = rankVoices(all, bookLanguage);
+      setVoices(ranked);
+      let saved: string | null = null;
+      try {
+        saved = (JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}") as { voice?: string }).voice ?? null;
+      } catch {
+        /* préférences illisibles : on garde la voix par défaut */
+      }
+      const chosen = ranked.find((v) => v.voice.voiceURI === saved) ?? ranked[0] ?? null;
+      voiceRef.current = chosen?.voice ?? null;
+      setVoiceURI(chosen?.voice.voiceURI ?? null);
+      if (ranked.length > 0) setNoVoice(false);
+    });
+
     return () => {
+      alive = false;
       speakingRef.current = false;
       window.speechSynthesis?.cancel();
     };
-  }, []);
+  }, [bookLanguage]);
 
   const flush = useCallback(
     (keepalive = false) => {
@@ -139,7 +170,7 @@ export function EpubReader({ workId, slug, title, lang, bookLanguage, initialLoc
     synth.cancel();
     const token = ++session.current;
     const chunks = toChunks(pageText());
-    const tag = bookLanguage.toLowerCase().startsWith("en") ? "en-GB" : "fr-FR";
+    const fallbackTag = bookLanguage.toLowerCase().startsWith("en") ? "en-GB" : "fr-FR";
     let i = 0;
 
     const step = () => {
@@ -153,29 +184,40 @@ export function EpubReader({ workId, slug, title, lang, bookLanguage, initialLoc
           advancing.current = false;
           if (token !== session.current || !speakingRef.current) return;
           if (lastCfi.current === before) stopSpeaking();
-          else speakFromHere();
+          else speakRef.current?.();
         });
         return;
       }
       const u = new SpeechSynthesisUtterance(chunks[i++]);
-      u.lang = tag;
+      const voice = voiceRef.current;
+      if (voice) u.voice = voice;
+      u.lang = voice?.lang ?? fallbackTag;
       u.rate = rateRef.current;
+      u.pitch = 1;
       u.onend = step;
-      u.onerror = () => {
-        if (token === session.current) stopSpeaking();
+      u.onerror = (event) => {
+        // « not-allowed » vient souvent d'un clic trop tôt après le chargement ; on arrête proprement.
+        if (token === session.current && (event as SpeechSynthesisErrorEvent).error !== "canceled") stopSpeaking();
       };
       synth.speak(u);
     };
-    step();
+    // Chrome ignore parfois la première phrase envoyée juste après cancel() : on laisse passer un tour.
+    window.setTimeout(step, 60);
   }, [bookLanguage, pageText, stopSpeaking]);
 
   useEffect(() => {
+    speakRef.current = speakFromHere;
     restart.current = speakFromHere;
   }, [speakFromHere]);
 
   const toggleSpeaking = () => {
     if (speakingRef.current) {
       stopSpeaking();
+      return;
+    }
+    // Aucune voix installée pour cette langue : on le dit, au lieu d'un silence inexpliqué.
+    if (voices.length === 0) {
+      setNoVoice(true);
       return;
     }
     speakingRef.current = true;
@@ -302,12 +344,21 @@ export function EpubReader({ workId, slug, title, lang, bookLanguage, initialLoc
     };
   }, [workId, initialLocator, flush]);
 
-  const savePrefs = (next: { theme?: ThemeName; size?: number }) => {
+  const savePrefs = (next: { theme?: ThemeName; size?: number; voice?: string }) => {
     try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify({ theme, size, ...next }));
+      const previous = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}") as Record<string, unknown>;
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ ...previous, theme, size, ...next }));
     } catch {
       /* stockage indisponible */
     }
+  };
+  const chooseVoice = (choice: VoiceChoice) => {
+    voiceRef.current = choice.voice;
+    setVoiceURI(choice.voice.voiceURI);
+    setNoVoice(false);
+    savePrefs({ voice: choice.voice.voiceURI });
+    setPanel(null);
+    if (speakingRef.current) speakFromHere(); // on reprend la lecture avec la voix choisie
   };
   const changeSize = (delta: number) => {
     const next = Math.min(SIZE_MAX, Math.max(SIZE_MIN, size + delta));
@@ -429,6 +480,12 @@ export function EpubReader({ workId, slug, title, lang, bookLanguage, initialLoc
         </button>
       </div>
 
+      {noVoice && (
+        <p role="status" className="shrink-0 px-4 py-2 text-center text-sm" style={{ background: `${t.fg}12` }}>
+          {canSpeak ? tr(lang, "reader.voiceNone") : tr(lang, "reader.noVoice")}
+        </p>
+      )}
+
       <div className="relative min-h-0 flex-1">
         <div ref={viewer} className="absolute inset-0 mx-auto max-w-3xl px-1" />
         {status === "loading" && (
@@ -468,7 +525,7 @@ export function EpubReader({ workId, slug, title, lang, bookLanguage, initialLoc
             style={{ background: t.bg, borderColor: `${t.fg}22` }}
           >
             <div role="tablist" className="flex shrink-0 border-b" style={{ borderColor: `${t.fg}22` }}>
-              {(["toc", "marks"] as const).map((k) => (
+              {(canSpeak && voices.length > 0 ? (["toc", "marks", "voice"] as const) : (["toc", "marks"] as const)).map((k) => (
                 <button
                   key={k}
                   type="button"
@@ -477,7 +534,11 @@ export function EpubReader({ workId, slug, title, lang, bookLanguage, initialLoc
                   onClick={() => setPanel(k)}
                   className={`h-12 flex-1 text-sm font-semibold transition-opacity ${panel === k ? "border-b-2 border-gold" : "opacity-60"}`}
                 >
-                  {k === "toc" ? tr(lang, "reader.toc") : tr(lang, "reader.marks", { n: bookmarks.length })}
+                  {k === "toc"
+                    ? tr(lang, "reader.toc")
+                    : k === "marks"
+                      ? tr(lang, "reader.marks", { n: bookmarks.length })
+                      : tr(lang, "reader.voiceTab")}
                 </button>
               ))}
             </div>
@@ -520,6 +581,30 @@ export function EpubReader({ workId, slug, title, lang, bookLanguage, initialLoc
                     </button>
                   </li>
                 ))}
+              {panel === "voice" && <li className="px-2 py-2 text-xs font-semibold uppercase tracking-wide opacity-60">{tr(lang, "reader.voiceTitle")}</li>}
+              {panel === "voice" &&
+                voices.map((choice) => {
+                  const active = choice.voice.voiceURI === voiceURI;
+                  return (
+                    <li key={choice.voice.voiceURI}>
+                      <button
+                        type="button"
+                        onClick={() => chooseVoice(choice)}
+                        aria-pressed={active}
+                        aria-label={tr(lang, "reader.voicePick", { name: choice.label })}
+                        className={`flex w-full items-center gap-2 rounded-lg px-2 py-3 text-left text-sm hover:bg-black/10 ${active ? "font-semibold" : ""}`}
+                      >
+                        <span className="min-w-0 flex-1 truncate">{choice.label}</span>
+                        {choice.natural && (
+                          <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide" style={{ background: `${t.fg}18` }}>
+                            {tr(lang, "reader.voiceNatural")}
+                          </span>
+                        )}
+                        {active && <span className="shrink-0" aria-hidden>✓</span>}
+                      </button>
+                    </li>
+                  );
+                })}
             </ul>
           </div>
         )}

@@ -177,9 +177,7 @@ argent réel. On peut écrire le calcul, pas prouver qu'il est juste.
 - **`/diocese/revenus`** : dépend du lot 5, ne peut pas être fait avant.
 - **Pagination** : la page affiche les 200 inscriptions les plus récentes, l'export contient tout.
   Suffisant pour un diocèse, à revoir si les volumes augmentent.
-- **Langue** : `/diocese` est en français uniquement. C'est cohérent avec la règle du projet
-  (« les pages d'administration restent en français »), mais à confirmer pour des diocèses
-  anglophones du Nigeria.
+- ✅ **Langue** : `/diocese` et l'ensemble de `/admin` sont bilingues FR/EN (voir section 10).
 
 ## 7. Décisions qui vous attendent
 
@@ -248,3 +246,55 @@ de réinitialiser son mot de passe.
 - L'authentification git de cette machine pointe sur un compte (`Loukmanayaba97`) qui n'a **pas** les
   droits sur `Loukstech/CCC` : une poussée ordinaire échoue en 403. La mise en ligne a été faite avec
   le jeton du compte `Loukstech` enregistré dans `gh`. À régler durablement.
+
+## 10. Mise à jour du 5 novembre — soirée (préparation de la démonstration)
+
+### Traduction des écrans d'administration
+
+Les cinq écrans d'administration sont bilingues FR/EN : hub du catalogue, modération, publicités,
+diocèses et paroisses, fiche d'une œuvre. Les messages d'erreur et de confirmation renvoyés par les
+actions serveur (diocèses, œuvres, droits, prix, publicités) suivent désormais la langue de l'auteur
+de l'action au lieu d'être figés en français.
+
+Point technique : ces pages lisent des cookies (langue, session) et ne peuvent donc pas être
+prérendues. Next 16 faisait échouer le build ; chaque page porte maintenant
+`export const instant = false`, l'échappatoire prévue par la documentation embarquée. Elles
+apparaissent comme dynamiques (ƒ) dans la sortie de build.
+
+### Lecture à voix haute d'un livre
+
+Le lecteur EPUB savait déjà lire le texte ; il choisit maintenant une **voix naturelle**. Nouveau
+module `src/lib/tts.ts` :
+
+- il attend l'événement `voiceschanged`, car les navigateurs remplissent la liste des voix en différé ;
+- il classe les voix de la langue du livre : voix neuronales (`Natural`, `Neural`, `Google`) d'abord,
+  puis voix réseau, puis synthèse locale ; l'anglais britannique est préféré, pour l'Afrique de l'Ouest ;
+- il se replie sur la meilleure voix disponible et affiche un message clair si l'appareil n'a aucune
+  voix pour cette langue, au lieu d'échouer en silence ;
+- un troisième onglet « Voix » dans le lecteur permet d'en changer, et le choix est mémorisé sur
+  l'appareil ;
+- la première phrase est légèrement différée après `cancel()`, sinon Chrome l'ignore.
+
+Aucun service payant ni clé d'API : ce sont les voix gratuites de Chrome, Edge et Safari. Le
+classement a été vérifié sur un jeu de voix simulé, et le code part bien dans les bundles client du
+build de production.
+
+Limite à connaître : la qualité dépend du navigateur et du système. Sur Chrome ou Edge, on obtient
+des voix neuronales ; sur un appareil sans voix française installée, la lecture est annoncée comme
+indisponible.
+
+### Paiement de démonstration retiré du parcours
+
+`/paiement/demo` répond désormais 404 par défaut, et « Acheter » / « S'abonner » mènent à
+`/paiement/indisponible`, qui explique que le paiement en ligne arrivera avec le prestataire. Aucune
+commande n'est créée. La page de faux paiement reste accessible uniquement avec
+`DEMO_PAYMENT_VISIBLE=true`, pour les recettes techniques.
+
+### Vérifications
+
+- `npx tsc --noEmit` : aucune erreur.
+- `npm run build` : réussit ; `/paiement/demo/[orderId]` n'est plus prérendu.
+- Contrôle en session réelle sur le serveur de production local : hub, modération, publicités,
+  diocèses et fiche œuvre s'affichent en anglais **et** en français ; `/paiement/demo/…` ne sert plus
+  l'interface de simulation.
+- Page d'accueil : 200, données Neon chargées.

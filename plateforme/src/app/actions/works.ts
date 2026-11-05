@@ -6,6 +6,8 @@ import { db } from "@/lib/db";
 import { CATALOG_ROLES, requireStaff } from "@/lib/dal";
 import { WORKS_TAG } from "@/lib/catalog";
 import { keep, type FormState } from "@/lib/form";
+import { t } from "@/lib/i18n";
+import { getLang } from "@/lib/lang";
 
 const TYPES = ["BOOK", "FILM", "DOCUMENTARY"] as const;
 const ACCESS = ["FREE", "PURCHASE", "SUBSCRIPTION"] as const;
@@ -33,6 +35,7 @@ function parseCountries(raw: string) {
 
 export async function createWork(_: FormState, formData: FormData): Promise<FormState> {
   const user = await requireStaff(CATALOG_ROLES);
+  const lang = await getLang();
 
   const title = String(formData.get("title") ?? "").trim();
   const type = String(formData.get("type") ?? "");
@@ -47,28 +50,24 @@ export async function createWork(_: FormState, formData: FormData): Promise<Form
   const publish = formData.get("publish") === "on";
   const values = keep(formData, ["title", "type", "author", "description", "language", "access", "price", "countries", "contractRef", "allowOffline", "publish"]);
 
-  if (title.length < 2) return { error: "Indiquez le titre de l’œuvre.", values };
-  if (!(TYPES as readonly string[]).includes(type)) return { error: "Type d’œuvre invalide.", values };
-  if (!(ACCESS as readonly string[]).includes(access)) return { error: "Mode d’accès invalide.", values };
+  if (title.length < 2) return { error: t(lang, "wk.errTitle"), values };
+  if (!(TYPES as readonly string[]).includes(type)) return { error: t(lang, "wk.errType"), values };
+  if (!(ACCESS as readonly string[]).includes(access)) return { error: t(lang, "wk.errAccess"), values };
   if (countries.some((c) => !/^[A-Z]{2}$/.test(c))) {
-    return { error: "Les pays doivent être des codes à 2 lettres séparés par des virgules (ex. BJ, TG, FR).", values };
+    return { error: t(lang, "wk.errCountries"), values };
   }
 
   let price: number | null = null;
   if (access === "PURCHASE") {
     price = Number(priceRaw);
     if (!Number.isInteger(price) || price <= 0) {
-      return { error: "Indiquez le prix en F CFA (nombre entier positif).", values };
+      return { error: t(lang, "wk.errPriceInt"), values };
     }
   }
 
   // Règle du cahier des charges : aucune publication sans droits documentés (section 17).
   if (publish && (countries.length === 0 || !contractRef)) {
-    return {
-      error:
-        "Pour publier, renseignez au moins un pays autorisé et la référence du contrat de licence. Sinon, enregistrez en brouillon.",
-      values,
-    };
+    return { error: t(lang, "wk.errPublishRights"), values };
   }
 
   const base = slugify(title) || "oeuvre";

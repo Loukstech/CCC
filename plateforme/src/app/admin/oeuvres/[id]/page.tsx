@@ -3,23 +3,39 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { deletePrice, savePrice, saveRights, saveVideoKey } from "@/app/actions/admin-works";
 import { ActionForm, CheckField, CheckGroup, Field, SelectField } from "@/components/ActionForm";
-import { COUNTRIES, COUNTRY_NAME, currencyOf } from "@/lib/countries";
+import { COUNTRIES, countryName, currencyOf } from "@/lib/countries";
+import { formatMoney } from "@/lib/currency";
 import { CATALOG_ROLES, FILE_ROLES, PRICE_ROLES, RIGHTS_ROLES, requireStaff } from "@/lib/dal";
 import { db } from "@/lib/db";
-import { EPUB_ERROR_TEXT, type EpubError } from "@/lib/epub";
-import { TYPE_LABEL, formatPrice } from "@/lib/catalog";
+import { t } from "@/lib/i18n";
+import { getLang } from "@/lib/lang";
+import type { EpubError } from "@/lib/epub";
 
-export const metadata = { title: "Gérer une œuvre — CCC" };
+// Écran authentifié et bilingue : il lit les cookies (langue, session), donc il ne peut pas être prérendu.
+export const instant = false;
 
-const STATUS_LABEL = { DRAFT: "Brouillon", PUBLISHED: "Publié", ARCHIVED: "Archivé" } as const;
+export async function generateMetadata() {
+  const lang = await getLang();
+  return { title: `${t(lang, "wk.title")} — CCC` };
+}
 
-export default function ManageWorkPage({ params, searchParams }: PageProps<"/admin/oeuvres/[id]">) {
+const TYPE_KEY = { BOOK: "type.BOOK", FILM: "type.FILM", DOCUMENTARY: "type.DOCUMENTARY" } as const;
+const STATUS_KEY = { DRAFT: "adm.status.DRAFT", PUBLISHED: "adm.status.PUBLISHED", ARCHIVED: "adm.status.ARCHIVED" } as const;
+const EPUB_KEY = {
+  vide: "wk.epubEmpty",
+  taille: "wk.epubSize",
+  format: "wk.epubFormat",
+  illisible: "wk.epubUnreadable",
+} as const;
+
+export default async function ManageWorkPage({ params, searchParams }: PageProps<"/admin/oeuvres/[id]">) {
+  const lang = await getLang();
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-10 sm:px-5">
       <Link href="/admin" className="text-sm text-muted hover:text-brand">
-        ← Administration
+        {t(lang, "wk.back")}
       </Link>
-      <Suspense fallback={<p className="mt-6 text-muted">Chargement…</p>}>
+      <Suspense fallback={<p className="mt-6 text-muted">{t(lang, "adm.loading")}</p>}>
         <Manage params={params} searchParams={searchParams} />
       </Suspense>
     </main>
@@ -37,6 +53,7 @@ async function Manage({
   searchParams: PageProps<"/admin/oeuvres/[id]">["searchParams"];
 }) {
   const staff = await requireStaff(CATALOG_ROLES);
+  const lang = await getLang();
   const { id } = await params;
   const query = await searchParams;
 
@@ -64,16 +81,16 @@ async function Manage({
   const day = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : "");
 
   const fileError = typeof query.erreur === "string" ? query.erreur : null;
-  const typeError = fileError === "type" ? "Seuls les livres ont un fichier EPUB." : null;
+  const typeError = fileError === "type" ? t(lang, "wk.typeErr") : null;
   const epubError =
     fileError === "stockage"
-      ? "Le stockage des fichiers n’est pas configuré sur cet hébergement : l’envoi est impossible pour le moment."
-      : fileError && fileError in EPUB_ERROR_TEXT
-        ? EPUB_ERROR_TEXT[fileError as EpubError]
+      ? t(lang, "wk.storageErr")
+      : fileError && fileError in EPUB_KEY
+        ? t(lang, EPUB_KEY[fileError as EpubError])
         : null;
   const known = new Set<string>(COUNTRIES.map((c) => c.code));
   const countryOptions = [
-    ...COUNTRIES.map((c) => ({ value: c.code, label: c.name })),
+    ...COUNTRIES.map((c) => ({ value: c.code, label: countryName(c.code, lang) })),
     ...(license?.countries ?? []).filter((c) => !known.has(c)).map((c) => ({ value: c, label: c })),
   ];
 
@@ -82,20 +99,22 @@ async function Manage({
       <header>
         <h1 className="font-display text-3xl font-semibold text-brand">{work.title}</h1>
         <p className="mt-1 text-sm text-muted">
-          {TYPE_LABEL[work.type]} · {STATUS_LABEL[work.status]} ·{" "}
+          {t(lang, TYPE_KEY[work.type])} · {t(lang, STATUS_KEY[work.status])} ·{" "}
           <Link href={`/oeuvres/${work.slug}`} className="underline underline-offset-4 hover:text-brand">
-            voir la fiche publique
+            {t(lang, "wk.seePublic")}
           </Link>
         </p>
       </header>
 
       {work.type === "BOOK" && (
         <section className={card}>
-          <h2 className={h2}>Fichier du livre</h2>
-          <p className="mt-1 text-sm text-muted">
-            {work.fileKey ? "✓ Un fichier EPUB est en place : les lecteurs peuvent ouvrir ce livre." : "Aucun fichier : les lecteurs ne pourront pas lire ce livre."}
-          </p>
-          {query.ok === "fichier" && <p role="status" className="mt-3 rounded-xl bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 ring-1 ring-emerald-500/30 dark:text-emerald-300">Fichier enregistré.</p>}
+          <h2 className={h2}>{t(lang, "wk.bookFile")}</h2>
+          <p className="mt-1 text-sm text-muted">{work.fileKey ? t(lang, "wk.filePresent") : t(lang, "wk.fileAbsent")}</p>
+          {query.ok === "fichier" && (
+            <p role="status" className="mt-3 rounded-xl bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 ring-1 ring-emerald-500/30 dark:text-emerald-300">
+              {t(lang, "wk.fileSaved")}
+            </p>
+          )}
           {(epubError || typeError) && (
             <p role="alert" className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200">
               {epubError ?? typeError}
@@ -111,84 +130,85 @@ async function Manage({
                 className="min-w-0 flex-1 rounded-xl border border-line bg-surface p-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-brand file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white"
               />
               <button type="submit" className="btn btn-primary">
-                {work.fileKey ? "Remplacer le fichier" : "Envoyer le fichier"}
+                {work.fileKey ? t(lang, "wk.replaceFile") : t(lang, "wk.uploadFile")}
               </button>
             </form>
           ) : (
-            <p className="mt-3 text-sm text-muted">Votre rôle ne permet pas d’envoyer de fichier.</p>
+            <p className="mt-3 text-sm text-muted">{t(lang, "wk.roleNoFile")}</p>
           )}
-          <p className="mt-2 text-xs text-muted">Format EPUB, 50 Mo au maximum.</p>
+          <p className="mt-2 text-xs text-muted">{t(lang, "wk.fileFormat")}</p>
         </section>
       )}
 
       {work.type !== "BOOK" && (
         <section className={card}>
-          <h2 className={h2}>Vidéo</h2>
-          <p className="mt-1 text-sm text-muted">
-            {work.fileKey ? "✓ Une vidéo est associée : les spectateurs autorisés peuvent la regarder." : "Aucune vidéo associée."}
-          </p>
+          <h2 className={h2}>{t(lang, "wk.video")}</h2>
+          <p className="mt-1 text-sm text-muted">{work.fileKey ? t(lang, "wk.videoPresent") : t(lang, "wk.videoAbsent")}</p>
           {canFile ? (
             <div className="mt-4">
-              <ActionForm action={saveVideoKey} submitLabel="Enregistrer">
+              <ActionForm action={saveVideoKey} submitLabel={t(lang, "adm.save")} lang={lang}>
                 <input type="hidden" name="workId" value={work.id} />
                 <Field
-                  label="Identifiant de la vidéo"
+                  label={t(lang, "wk.videoKey")}
                   name="videoKey"
                   required={false}
                   defaultValue={work.fileKey ?? ""}
-                  hint="Mux : l’identifiant de lecture (Playback ID, vidéo à lecture signée). Démonstration : nom d’un fichier du dossier public/demo-video (ex. demo-film-1.mp4)."
+                  hint={t(lang, "wk.videoKeyHint")}
                 />
               </ActionForm>
             </div>
           ) : (
-            <p className="mt-3 text-sm text-muted">Votre rôle ne permet pas de modifier la vidéo.</p>
+            <p className="mt-3 text-sm text-muted">{t(lang, "wk.roleNoVideo")}</p>
           )}
         </section>
       )}
 
       <section className={card}>
-        <h2 className={h2}>Droits et territoires</h2>
+        <h2 className={h2}>{t(lang, "wk.rights")}</h2>
         {canRights ? (
           <div className="mt-4">
-            <ActionForm action={saveRights} submitLabel="Enregistrer les droits">
+            <ActionForm action={saveRights} submitLabel={t(lang, "wk.saveRights")} lang={lang}>
               <input type="hidden" name="workId" value={work.id} />
               <CheckGroup
-                label="Pays où l’œuvre est autorisée"
+                label={t(lang, "wk.rightsCountries")}
                 name="countries"
                 options={countryOptions}
                 defaultValues={license?.countries ?? []}
               />
-              <Field label="Référence du contrat de licence" name="contractRef" required={false} defaultValue={license?.contractRef ?? ""} />
+              <Field label={t(lang, "wk.contract")} name="contractRef" required={false} defaultValue={license?.contractRef ?? ""} />
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Début (facultatif)" name="startsAt" type="date" required={false} defaultValue={day(license?.startsAt)} />
-                <Field label="Fin (facultatif)" name="endsAt" type="date" required={false} defaultValue={day(license?.endsAt)} />
+                <Field label={t(lang, "wk.from")} name="startsAt" type="date" required={false} defaultValue={day(license?.startsAt)} />
+                <Field label={t(lang, "wk.to")} name="endsAt" type="date" required={false} defaultValue={day(license?.endsAt)} />
               </div>
-              <CheckField label="Lecture sur le web autorisée" name="allowWeb" defaultChecked={license?.allowWeb ?? true} />
-              <CheckField label="Téléchargement hors ligne autorisé" name="allowOffline" defaultChecked={license?.allowOffline ?? false} />
+              <CheckField label={t(lang, "wk.allowWeb")} name="allowWeb" defaultChecked={license?.allowWeb ?? true} />
+              <CheckField label={t(lang, "wk.allowOffline")} name="allowOffline" defaultChecked={license?.allowOffline ?? false} />
             </ActionForm>
           </div>
         ) : (
           <p className="mt-2 text-sm text-muted">
-            Pays : {license?.countries.map((c) => COUNTRY_NAME[c] ?? c).join(", ") || "aucun"}. Seul le gestionnaire des droits peut les modifier.
+            {t(lang, "wk.rightsReadonly", {
+              countries:
+                (license?.countries ?? []).map((c) => countryName(c, lang)).join(", ") || t(lang, "wk.none"),
+            })}
           </p>
         )}
       </section>
 
       {work.access === "PURCHASE" && (
         <section className={card}>
-          <h2 className={h2}>Prix par pays</h2>
+          <h2 className={h2}>{t(lang, "wk.prices")}</h2>
           <ul className="mt-3 divide-y divide-line">
-            {work.prices.length === 0 && <li className="py-2 text-sm text-muted">Aucun prix défini.</li>}
+            {work.prices.length === 0 && <li className="py-2 text-sm text-muted">{t(lang, "wk.noPrices")}</li>}
             {work.prices.map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                 <span>
-                  {COUNTRY_NAME[p.country] ?? p.country} — <strong>{formatPrice(p)}</strong>
+                  {countryName(p.country, lang)} — <strong>{formatMoney(p.amount, p.currency, lang)}</strong>
                 </span>
                 {canPrice && (
                   <form action={deletePrice}>
                     <input type="hidden" name="id" value={p.id} />
                     <button type="submit" className="rounded-lg px-2 py-1 text-red-600 hover:bg-red-50">
-                      Retirer
+                      {t(lang, "wk.remove")}
                     </button>
                   </form>
                 )}
@@ -197,19 +217,19 @@ async function Manage({
           </ul>
           {canPrice ? (
             <div className="mt-4 border-t border-line pt-4">
-              <p className="mb-2 text-sm font-medium text-ink">Ajouter ou modifier un prix</p>
-              <ActionForm action={savePrice} submitLabel="Enregistrer le prix">
+              <p className="mb-2 text-sm font-medium text-ink">{t(lang, "wk.addPrice")}</p>
+              <ActionForm action={savePrice} submitLabel={t(lang, "wk.savePrice")} lang={lang}>
                 <input type="hidden" name="workId" value={work.id} />
                 <SelectField
-                  label="Pays"
+                  label={t(lang, "wk.country")}
                   name="country"
-                  options={COUNTRIES.map((c) => ({ value: c.code, label: `${c.name} (${currencyOf(c.code)})` }))}
+                  options={COUNTRIES.map((c) => ({ value: c.code, label: `${countryName(c.code, lang)} (${currencyOf(c.code)})` }))}
                 />
-                <Field label="Prix" name="amount" type="text" hint="Dans la devise du pays. Ex. 3000 pour le F CFA, 4,99 pour l’euro." />
+                <Field label={t(lang, "wk.amount")} name="amount" type="text" hint={t(lang, "wk.amountHint")} />
               </ActionForm>
             </div>
           ) : (
-            <p className="mt-3 text-sm text-muted">Votre rôle ne permet pas de modifier les prix.</p>
+            <p className="mt-3 text-sm text-muted">{t(lang, "wk.roleNoPrice")}</p>
           )}
         </section>
       )}

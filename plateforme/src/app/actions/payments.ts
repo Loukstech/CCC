@@ -7,7 +7,7 @@ import { priceFor } from "@/lib/catalog";
 import { getCurrentUser } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { markOrderFailed, markOrderPaid } from "@/lib/payments/fulfill";
-import { getPaymentProvider } from "@/lib/payments";
+import { demoCheckoutVisible, getPaymentProvider } from "@/lib/payments";
 import { t } from "@/lib/i18n";
 import { getLang } from "@/lib/lang";
 import { isPlan, planPriceFor } from "@/lib/plans";
@@ -40,6 +40,8 @@ export async function startPurchase(formData: FormData) {
   if (!price) redirect(`/oeuvres/${work.slug}`);
 
   const provider = getPaymentProvider();
+  // Aucun prestataire réel branché : on ne crée pas de commande et on l'annonce clairement.
+  if (provider.id === "demo" && !demoCheckoutVisible) redirect("/paiement/indisponible");
   const order = await db.order.create({
     data: { userId: user.id, workId: work.id, currency: price.currency, amount: price.amount, provider: provider.id },
     select: { id: true },
@@ -68,6 +70,7 @@ export async function startSubscription(formData: FormData) {
   if (!price) redirect("/abonnement");
 
   const provider = getPaymentProvider();
+  if (provider.id === "demo" && !demoCheckoutVisible) redirect("/paiement/indisponible");
   const order = await db.order.create({
     data: { userId: user.id, plan, currency: price.currency, amount: price.amount, provider: provider.id },
     select: { id: true },
@@ -87,6 +90,8 @@ export async function startSubscription(formData: FormData) {
 export async function completeDemoPayment(formData: FormData) {
   const user = await getCurrentUser();
   if (!user) redirect("/connexion");
+  // Le faux paiement n'est utilisable que si on l'a explicitement ouvert (recette technique).
+  if (!demoCheckoutVisible) redirect("/paiement/indisponible");
 
   const orderId = String(formData.get("orderId") ?? "");
   const outcome = String(formData.get("outcome") ?? "");

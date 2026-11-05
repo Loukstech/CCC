@@ -5,6 +5,8 @@ import { AD_ROLES, requireStaff } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { ADS_TAG } from "@/lib/ads";
 import { keep, type FormState } from "@/lib/form";
+import { t } from "@/lib/i18n";
+import { getLang } from "@/lib/lang";
 
 const PLACEMENTS = ["HOME", "CATALOG", "WORK", "STICKY"] as const;
 
@@ -31,6 +33,7 @@ const refresh = () => {
 
 export async function createAd(_: FormState, formData: FormData): Promise<FormState> {
   const user = await requireStaff(AD_ROLES);
+  const lang = await getLang();
   const values = keep(formData, ["placement", "title", "advertiser", "text", "imageUrl", "linkUrl", "startsAt", "endsAt"]);
   const placement = values.placement;
   const title = values.title.trim();
@@ -40,13 +43,13 @@ export async function createAd(_: FormState, formData: FormData): Promise<FormSt
   const startsAt = parseDate(formData.get("startsAt"));
   const endsAt = parseDate(formData.get("endsAt"));
 
-  if (!(PLACEMENTS as readonly string[]).includes(placement)) return { error: "Emplacement invalide.", values };
-  if (title.length < 2) return { error: "Indiquez le titre de la publicité.", values };
-  if (advertiser.length < 2) return { error: "Indiquez le nom de l’annonceur.", values };
-  if (!isHttpUrl(linkUrl)) return { error: "Le lien doit commencer par https://", values };
-  if (imageUrl && !isHttpUrl(imageUrl)) return { error: "L’adresse de l’image doit commencer par https://", values };
-  if (startsAt === undefined || endsAt === undefined) return { error: "Date invalide.", values };
-  if (startsAt && endsAt && endsAt < startsAt) return { error: "La date de fin précède la date de début.", values };
+  if (!(PLACEMENTS as readonly string[]).includes(placement)) return { error: t(lang, "adsAdm.errPlacement"), values };
+  if (title.length < 2) return { error: t(lang, "adsAdm.errTitle"), values };
+  if (advertiser.length < 2) return { error: t(lang, "adsAdm.errAdvertiser"), values };
+  if (!isHttpUrl(linkUrl)) return { error: t(lang, "adsAdm.errLink"), values };
+  if (imageUrl && !isHttpUrl(imageUrl)) return { error: t(lang, "adsAdm.errImage"), values };
+  if (startsAt === undefined || endsAt === undefined) return { error: t(lang, "adsAdm.errDate"), values };
+  if (startsAt && endsAt && endsAt < startsAt) return { error: t(lang, "adsAdm.errDateOrder"), values };
 
   const ad = await db.ad.create({
     data: {
