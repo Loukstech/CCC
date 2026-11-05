@@ -304,11 +304,147 @@ export async function mergeParish(formData: FormData) {
   refresh();
 }
 
-/** Génère un mot de passe provisoire lisible (ex. « X7k9-Pq2m »). */
+// Alphabet sans I, O, 0 et 1 : un mot de passe dicté au téléphone ne se confond pas.
+const PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+/** Génère un mot de passe provisoire lisible (ex. « X7K9-PQ2M »). */
 function generateTempPassword(): string {
-  const bytes = randomBytes(6);
-  const s = bytes.toString("base64url").slice(0, 8);
-  return `${s.slice(0, 4)}-${s.slice(4)}`;
+  const chars = Array.from(randomBytes(8), (b) => PASSWORD_ALPHABET[b % PASSWORD_ALPHABET.length]);
+  return `${chars.slice(0, 4).join("")}-${chars.slice(4).join("")}`;
+}
+
+/**
+ * Nombre d'administrateurs réellement actifs d'un diocèse, en excluant éventuellement un compte.
+ * Un diocèse sans administrateur actif ne peut plus être géré ni réclamé : on s'en sert comme garde-fou
+ * avant toute rétrogradation ou désactivation.
+ */
+async function activeAdminCount(dioceseId: string, exceptUserId?: string): Promise<number> {
+  return db.dioceseAdmin.count({
+    where: {
+      dioceseId,
+      role: "ADMIN",
+      ...(exceptUserId ? { userId: { not: exceptUserId } } : {}),
+      user: { disabledAt: null },
+    },
+  });
+}
+
+/** Change le rôle d'un compte diocésain. On refuse de retirer le dernier administrateur actif. */
+export async function updateDioceseAdminRole(_: FormState, formData: FormData): Promise<FormState> {
+  const actor = await requireStaff(REFERENTIAL_ROLES);
+  const userId = String(formData.get("userId") ?? "");
+  const role = formData.get("role") === "VIEWER" ? "VIEWER" : "ADMIN";
+  if (!userId) return { error: "Compte inconnu." };
+
+  const membership = await db.dioceseAdmin.findFirst({
+    where: { userId },
+    select: { dioceseId: true, role: true, user: { select: { name: true, email: true } } },
+  });
+  if (!membership) return { error: "Ce compte ne gère aucun diocèse." };
+  if (membership.role === role) return { notice: "Le rôle est déjà celui demandé." };
+
+  if (role === "VIEWER" && (await activeAdminCount(membership.dioceseId, userId)) === 0) {
+    return {
+      error:
+        "Impossible : ce compte est le dernier administrateur actif de ce diocèse. Nommez un autre administrateur d'abord, sinon l'espace deviendrait ingérable.",
+    };
+  }
+
+  await db.dioceseAdmin.updateMany({ where: { userId, dioceseId: membership.dioceseId }, data: { role } });
+  await db.auditLog.create({
+    data: {
+      actorId: actor.id,
+      action: "dioceseAdmin.role",
+      target: userId,
+      details: { dioceseId: membership.dioceseId, from: membership.role, to: role },
+    },
+  });
+  refresh();
+  return {
+    notice: `${membership.user.name ?? membership.user.email ?? "Le compte"} est maintenant ${
+      role === "ADMIN" ? "administrateur" : "observateur"
+    } de son diocèse.`,
+  };
+}
+
+/**
+ * Désactive ou réactive un compte diocésain. La désactivation coupe l'accès immédiatement
+ * (getCurrentUser traite un compte désactivé comme déconnecté) sans toucher aux fidèles ni au diocèse.
+ */
+export async function toggleDioceseAdmin(_: FormState, formData: FormData): Promise<FormState> {
+  const actor = await requireStaff(REFERENTIAL_ROLES);
+  const userId = String(formData.get("userId") ?? "");
+  if (!userId) return { error: "Compte inconnu." };
+
+  const membership = await db.dioceseAdmin.findFirst({
+    where: { userId },
+    select: {
+      dioceseId: true,
+      role: true,
+      user: { select: { name: true, email: true, disabledAt: true, staffRole: true } },
+    },
+  });
+  if (!membership) return { error: "Ce compte ne gère aucun diocèse." };
+  if (membership.user.staffRole) {
+    return { error: "Ce compte est aussi membre du personnel : gérez-le depuis les comptes du personnel." };
+  }
+
+  const disable = !membership.user.disabledAt;
+  if (disable && membership.role === "ADMIN" && (await activeAdminCount(membership.dioceseId, userId)) === 0) {
+    return {
+      error:
+        "Impossible : ce compte est le dernier administrateur actif de ce diocèse. Créez un autre administrateur avant de le désactiver.",
+    };
+  }
+
+  await db.user.update({ where: { id: userId }, data: { disabledAt: disable ? new Date() : null } });
+  await db.auditLog.create({
+    data: {
+      actorId: actor.id,
+      action: disable ? "dioceseAdmin.disable" : "dioceseAdmin.enable",
+      target: userId,
+      details: { dioceseId: membership.dioceseId },
+    },
+  });
+  refresh();
+  return {
+    notice: disable
+      ? `Compte de ${membership.user.name ?? membership.user.email ?? "l'administrateur"} désactivé : il ne peut plus se connecter.`
+      : `Compte de ${membership.user.name ?? membership.user.email ?? "l'administrateur"} réactivé.`,
+  };
+}
+
+/** Réinitialise le mot de passe d'un compte diocésain. Le provisoire n'est affiché qu'une seule fois. */
+export async function resetDioceseAdminPassword(_: FormState, formData: FormData): Promise<FormState> {
+  const actor = await requireStaff(REFERENTIAL_ROLES);
+  const userId = String(formData.get("userId") ?? "");
+  if (!userId) return { error: "Compte inconnu." };
+
+  const membership = await db.dioceseAdmin.findFirst({
+    where: { userId },
+    select: { dioceseId: true, user: { select: { name: true, email: true, disabledAt: true } } },
+  });
+  if (!membership) return { error: "Ce compte ne gère aucun diocèse." };
+  if (membership.user.disabledAt) {
+    return { error: "Ce compte est désactivé : réactivez-le avant de réinitialiser son mot de passe." };
+  }
+
+  const tempPassword = generateTempPassword();
+  await db.user.update({ where: { id: userId }, data: { passwordHash: await hashPassword(tempPassword) } });
+  await db.auditLog.create({
+    data: {
+      actorId: actor.id,
+      action: "dioceseAdmin.resetPassword",
+      target: userId,
+      details: { dioceseId: membership.dioceseId },
+    },
+  });
+  refresh();
+  return {
+    notice: `Nouveau mot de passe provisoire pour ${
+      membership.user.name ?? membership.user.email ?? "ce compte"
+    } :\n${tempPassword}\nNotez-le maintenant : il ne sera plus affiché.`,
+  };
 }
 
 /** Crée un administrateur diocésain. Le mot de passe provisoire est affiché une seule fois, à copier. */

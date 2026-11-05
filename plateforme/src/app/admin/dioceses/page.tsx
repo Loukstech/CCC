@@ -11,9 +11,12 @@ import {
   deleteDiocese,
   mergeParish,
   renameParish,
+  resetDioceseAdminPassword,
   toggleDiocese,
+  toggleDioceseAdmin,
   toggleParish,
   updateDiocese,
+  updateDioceseAdminRole,
 } from "@/app/actions/dioceses";
 
 export const metadata = { title: "Diocèses et paroisses — CCC" };
@@ -39,26 +42,37 @@ export default function DiocesesAdminPage() {
 async function DiocesesContent() {
   await requireStaff(REFERENTIAL_ROLES);
 
-  const dioceses = await db.diocese.findMany({
-    orderBy: [{ name: "asc" }],
-    select: {
-      id: true,
-      name: true,
-      country: true,
-      active: true,
-      parishes: {
-        orderBy: { name: "asc" },
-        select: {
-          id: true,
-          name: true,
-          city: true,
-          active: true,
-          mergedIntoId: true,
-          _count: { select: { users: true } },
+  const [dioceses, accounts] = await Promise.all([
+    db.diocese.findMany({
+      orderBy: [{ name: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        country: true,
+        active: true,
+        parishes: {
+          orderBy: { name: "asc" },
+          select: {
+            id: true,
+            name: true,
+            city: true,
+            active: true,
+            mergedIntoId: true,
+            _count: { select: { users: true } },
+          },
         },
       },
-    },
-  });
+    }),
+    db.dioceseAdmin.findMany({
+      orderBy: [{ diocese: { name: "asc" } }, { createdAt: "asc" }],
+      select: {
+        role: true,
+        createdAt: true,
+        diocese: { select: { id: true, name: true } },
+        user: { select: { id: true, name: true, email: true, disabledAt: true } },
+      },
+    }),
+  ]);
 
   const totalParishes = dioceses.reduce((n, d) => n + d.parishes.length, 0);
 
@@ -88,6 +102,13 @@ async function DiocesesContent() {
                         <span className={d.active ? "font-semibold text-emerald-600" : "font-semibold text-amber-600"}>
                           {d.active ? "actif" : "inactif"}
                         </span>
+                      </p>
+                      <p className="mt-1 text-xs text-muted">
+                        Comptes :{" "}
+                        {accounts
+                          .filter((a) => a.diocese.id === d.id)
+                          .map((a) => `${a.user.email ?? "sans email"} (${a.role === "ADMIN" ? "admin" : "observateur"})`)
+                          .join(" · ") || "aucun — le diocèse peut créer son accès"}
                       </p>
                     </div>
                     <form action={toggleDiocese}>
@@ -265,6 +286,90 @@ async function DiocesesContent() {
           </ActionForm>
         </section>
       </div>
+
+      <section id="comptes" className="lg:col-span-2">
+        <h2 className="mb-1 font-display text-xl font-semibold text-brand">
+          Comptes diocésains ({accounts.length})
+        </h2>
+        <p className="mb-3 max-w-3xl text-sm text-muted">
+          Un compte par diocèse. « Administrateur » consulte les inscrits et exporte la liste ; « observateur »
+          consulte seulement. Désactiver un compte coupe l’accès immédiatement, sans supprimer le diocèse.
+        </p>
+        {accounts.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-line bg-surface p-6 text-muted">
+            Aucun compte diocésain. Créez-en un avec le formulaire ci-contre, ou laissez un diocèse créer son accès
+            depuis la page de connexion.
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {accounts.map((a) => {
+              const disabled = Boolean(a.user.disabledAt);
+              return (
+                <li key={a.user.id} className="rounded-2xl border border-line bg-surface p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-ink">
+                        {a.user.name ?? a.user.email ?? "Compte sans nom"}
+                        {disabled && <span className="text-xs font-semibold text-amber-600"> · désactivé</span>}
+                      </p>
+                      <p className="text-xs text-muted">
+                        {a.user.email ?? "sans email"} · {a.diocese.name} ·{" "}
+                        <span className="font-semibold text-brand">
+                          {a.role === "ADMIN" ? "administrateur" : "observateur"}
+                        </span>
+                      </p>
+                    </div>
+                    <details className="w-full text-sm">
+                      <summary className="inline-block cursor-pointer list-none rounded-lg border border-line px-3 py-1.5 font-medium hover:bg-brand/5">
+                        Gérer le compte
+                      </summary>
+                      <div className="mt-3 flex w-full max-w-md flex-col gap-4 rounded-xl bg-paper/50 p-3">
+                        <div>
+                          <p className="mb-2 text-xs font-semibold text-brand">Rôle</p>
+                          <ActionForm action={updateDioceseAdminRole} submitLabel="Changer le rôle">
+                            <input type="hidden" name="userId" value={a.user.id} />
+                            <SelectField
+                              label="Rôle"
+                              name="role"
+                              defaultValue={a.role}
+                              options={[
+                                { value: "ADMIN", label: "Administrateur (lecture + export)" },
+                                { value: "VIEWER", label: "Observateur (lecture seule)" },
+                              ]}
+                            />
+                          </ActionForm>
+                        </div>
+                        <div className="border-t border-line pt-3">
+                          <p className="mb-2 text-xs font-semibold text-brand">Mot de passe</p>
+                          <ActionForm action={resetDioceseAdminPassword} submitLabel="Réinitialiser le mot de passe">
+                            <input type="hidden" name="userId" value={a.user.id} />
+                            <p className="text-xs text-muted">
+                              Un mot de passe provisoire s’affichera une seule fois, à transmettre de vive voix.
+                            </p>
+                          </ActionForm>
+                        </div>
+                        <div className="border-t border-line pt-3">
+                          <ActionForm
+                            action={toggleDioceseAdmin}
+                            submitLabel={disabled ? "Réactiver le compte" : "Désactiver le compte"}
+                          >
+                            <input type="hidden" name="userId" value={a.user.id} />
+                            <p className="text-xs text-muted">
+                              {disabled
+                                ? "Le compte ne peut plus se connecter tant qu’il reste désactivé."
+                                : "L’accès est coupé immédiatement. Le diocèse et ses inscrits sont conservés."}
+                            </p>
+                          </ActionForm>
+                        </div>
+                      </div>
+                    </details>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

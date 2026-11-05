@@ -63,6 +63,11 @@ Publication immédiate, contrôle **a posteriori** : c'est la réponse du client
 - **Comptes diocésains** créés depuis `/admin/dioceses`. Le mot de passe provisoire s'affiche
   **une seule fois** dans l'interface, à transmettre de vive voix : il n'est jamais stocké en clair
   ni envoyé par email (aucune messagerie n'est configurée).
+- **Gestion des comptes** depuis le même écran : liste des comptes avec leur diocèse et leur rôle,
+  changement `ADMIN` ↔ `VIEWER`, désactivation/réactivation immédiate, réinitialisation du mot de
+  passe (nouveau provisoire affiché une fois). Garde-fou : on ne peut ni rétrograder ni désactiver
+  le **dernier administrateur actif** d'un diocèse, sinon l'espace deviendrait ingérable et plus
+  personne ne pourrait le réclamer.
 - Deux rôles : `ADMIN` (lecture + export) et `VIEWER` (lecture seule, sans bouton d'export).
 - **Le périmètre vient de `DioceseAdmin` en base, jamais de l'URL.** Un administrateur qui modifie
   l'adresse pour viser un autre diocèse est ramené au sien ; un super-administrateur doit désigner
@@ -164,10 +169,11 @@ argent réel. On peut écrire le calcul, pas prouver qu'il est juste.
 
 ### Travaux restants sur le lot 3
 
-- **Gestion des comptes diocésains** : on peut en **créer**, mais pas encore les **lister**, changer
-  leur rôle, les désactiver ni réinitialiser leur mot de passe. C'est la première chose à compléter.
+- ✅ **Gestion des comptes diocésains** — livrée : liste, changement de rôle, désactivation,
+  réinitialisation du mot de passe.
 - **Mot de passe provisoire sans expiration** : il faudrait imposer son changement à la première
-  connexion.
+  connexion. Non fait : sans messagerie, imposer un changement à la première connexion complique la
+  démonstration sans rien apporter au client à ce stade.
 - **`/diocese/revenus`** : dépend du lot 5, ne peut pas être fait avant.
 - **Pagination** : la page affiche les 200 inscriptions les plus récentes, l'export contient tout.
   Suffisant pour un diocèse, à revoir si les volumes augmentent.
@@ -221,12 +227,14 @@ npm run build
 |---|---|
 | `/inscription` | public — diocèse, paroisse, consentement |
 | `/oeuvres/[slug]` | public — avis et commentaires |
-| `/admin/dioceses` | super-administrateur — référentiel et création des comptes diocésains |
+| `/admin/dioceses` | super-administrateur — référentiel et gestion des comptes diocésains |
 | `/admin/moderation` | super-administrateur, éditeur, support — signalements |
 | `/diocese` | compte diocésain — inscrits et export |
 
 Créer un compte diocésain : Administration > Diocèses et paroisses > « Créer un administrateur
 diocésain ». **Notez le mot de passe affiché immédiatement** : il ne sera plus visible ensuite.
+Le même écran liste les comptes existants et permet de changer le rôle, de désactiver le compte ou
+de réinitialiser son mot de passe.
 
 ## 9. Points de vigilance techniques
 
