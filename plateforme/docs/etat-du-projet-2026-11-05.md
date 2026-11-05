@@ -145,6 +145,8 @@ Contrôles systématiques : `tsc --noEmit`, `eslint`, `next build`.
 | `143b01a` | Retrait des mentions de démonstration dans les titres et descriptions |
 | `338d1e2` | Gestion des comptes diocésains : liste, rôle, désactivation, mot de passe |
 | `8dc2d9d` | Administration bilingue, lecture à voix haute naturelle, paiement de démo retiré du parcours |
+| `b57d115` | Documentation : déploiement Vercel manuel, aucun webhook Git |
+| `cacf0bb` | Lots 4 à 7 : commissions 70/10/20 du net, versements, espace écrivain, manuscrits |
 
 **Base de données** : Neon, partagée entre la machine locale et le site en ligne. Les deux
 migrations sont appliquées. Les scripts de test ont supprimé leurs propres comptes `e2e-*`, avis,
