@@ -35,14 +35,22 @@ un client, prenez l'offre **Pro** (environ 20 $ par mois, résiliable après la 
 4. **Deploy.** La région des fonctions est déjà réglée sur Francfort (`vercel.json`), à côté de la base Neon.
 5. Ouvrir l'adresse fournie et dérouler le parcours de démonstration ci-dessous.
 
-Le redéploiement automatique à chaque poussée **n'est pas garanti** : il dépend de l'intégration Git
-Vercel ↔ GitHub. Le 5 novembre 2026 au soir, le dépôt `Loukstech/CCC` ne portait **aucun webhook
-Vercel** : deux poussées successives (`143b01a`, `338d1e2`, puis `8dc2d9d`) n'ont pas été publiées.
-Dans ce cas, le site reste figé sur une version antérieure.
+Le redéploiement est **automatique** : chaque poussée sur `main` déclenche un déploiement Vercel.
+Vérifié le 5 novembre 2026 : après une poussée, le site servait les nouvelles routes en quelques
+minutes, et le commit portait le statut « Vercel : Deployment has completed ».
 
-Pour publier à coup sûr : ouvrir le tableau de bord Vercel → projet → **Deployments**, vérifier que
-le dernier commit est bien celui de `main`, sinon **Redeploy**. Si aucun déploiement n'apparaît,
-reconnecter le dépôt dans Settings → Git (l'intégration a probablement été retirée).
+Attention au piège de diagnostic : Vercel passe par une **GitHub App**, donc
+`GET /repos/Loukstech/CCC/hooks` n'affiche aucun webhook — ce n'est **pas** une preuve d'absence
+d'intégration. Pour savoir où en est le site : statut du commit sur GitHub, ou tableau de bord Vercel →
+**Deployments** (le dernier commit doit être celui de `main`).
+
+Si une poussée ne publie vraiment rien : tableau de bord Vercel → projet → **Deployments** →
+**Redeploy** ; si aucun déploiement n'apparaît, reconnecter le dépôt dans Settings → Git.
+
+> **Sécurité** : ce dépôt est public. `docs/comptes-demo.md` y publie les mots de passe des comptes de
+> démonstration, dont un super-administrateur, et le site en ligne partage la base de démonstration.
+> Changer ce mot de passe (`npm run admin:password`) et retirer les mots de passe du document, ou
+> passer le dépôt en privé. Voir `docs/etat-du-projet-2026-11-05.md`, section 12.
 
 ## Parcours à montrer au client
 

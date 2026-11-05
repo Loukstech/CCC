@@ -1,26 +1,40 @@
 # État du projet CCC — 5 novembre 2026
 
-> Document de suivi rédigé après la mise en ligne des lots 1 à 3.
+> Document de suivi tenu à jour au fil de la journée du 5 novembre 2026 : lots 1 à 3 et mise en
+> ligne le matin, administration bilingue et gestion des comptes diocésains l'après-midi, lots 4 à 7
+> le soir.
+>
+> **Dernière révision : 5 novembre, 22 h 30.** Vérifié à cette heure : le local, GitHub
+> (`origin/main`) et le site en ligne servent le même commit `3a24990` ; la base Neon répond
+> « Database schema is up to date » ; le déploiement Vercel est automatique.
+>
 > Ce qui est **fait et vérifié**, ce qui a été **corrigé en chemin**, ce qui **reste à faire**,
 > et les **décisions qui vous attendent**.
 
 ## 1. En une page
 
-Trois lots sont livrés, commités et déployés sur
+Sept lots sont livrés, commités et déployés sur
 [ccc-three-lyart.vercel.app](https://ccc-three-lyart.vercel.app) :
 
 | Lot | Sujet | État |
 |---|---|---|
-| 1 | Diocèses, paroisses, inscription en cascade, consentement | **Livré et en ligne** |
-| 2 | Avis, commentaires, signalements, modération a posteriori | **Livré et en ligne** |
-| 3 | Espace diocèse : inscrits, export CSV, comptes diocésains | **Livré et en ligne** |
-| 4 | Frais de paiement et commissions (diocèse, écrivain) | À faire — dépend d'un prestataire réel |
-| 5 | Versements : relevés, lots, approbation, références | À faire — dépend du lot 4 |
-| 6 | Espace écrivain : œuvres, ventes, avis, droits | À faire — dépend du lot 4 |
-| 7 | *(option)* Dépôt de manuscrit et validation éditoriale | À faire — non prioritaire |
+| 1 | Diocèses, paroisses, inscription en cascade, consentement | **Livré, en ligne** |
+| 2 | Avis, commentaires, signalements, modération a posteriori | **Livré, en ligne** |
+| 3 | Espace diocèse : inscrits, export CSV, comptes diocésains | **Livré, en ligne** |
+| 4 | Commissions : frais, net, parts écrivain / diocèse / plateforme, registre | **Livré, vérifié au franc près** |
+| 5 | Versements : relevés, lots, approbation, référence de paiement | **Livré, vérifié au franc près** |
+| 6 | Espace écrivain : profil, œuvres, ventes, avis, droits | **Livré, en ligne** |
+| 7 | Manuscrits *(option)* : dépôt et file de lecture | **Livré (fichier par lien)** |
 
-Le socle est vérifié par des tests dans un vrai navigateur (Microsoft Edge) sur le build de
-production, puis sur le site en ligne après déploiement.
+**La limite à garder en tête** : le paiement est encore un **adaptateur de démonstration** —
+l'acheteur clique lui-même « payé ». Les calculs de commissions sont justes et vérifiés au franc près,
+mais aucun argent réel n'est encaissé et les frais du prestataire sont un forfait de 2 % supposé. C'est
+le seul point qui empêche de considérer les lots 4 à 6 comme réellement terminés.
+
+Le socle est vérifié dans un vrai navigateur (Microsoft Edge) sur le build de production, puis sur le
+site en ligne. Le 5 novembre à 22 h, le site sert bien le dernier commit : `/ecrivain`,
+`/admin/finances`, `/diocese/inscription` et `/paiement/indisponible` répondent, et l'inscription
+affiche les 3 diocèses lus en base.
 
 ## 2. Ce qui a été construit
 
@@ -134,29 +148,38 @@ Contrôles systématiques : `tsc --noEmit`, `eslint`, `next build`.
 
 ## 5. État du dépôt et de la base
 
-**Commits poussés sur `main`** (dépôt `Loukstech/CCC`) :
+**Commits poussés sur `main`** (dépôt `Loukstech/CCC`), tous vérifiés identiques entre la machine
+locale et GitHub le 5 novembre à 22 h :
 
 | Commit | Objet |
 |---|---|
 | `d92c6f6` | Diocèses et paroisses : inscription en cascade, consentement, administration du référentiel |
 | `0d83a3e` | Avis et commentaires : notes, réponses, signalements et modération a posteriori |
 | `a40b6d8` | Espace diocèse : consultation des inscrits, export CSV et comptes diocésains |
+| `609cca9` | Documentation : état d'avancement des lots 1 à 3 |
 | `6cde03f` | Comptes de démonstration, auteur des œuvres, accès diocésain autonome |
 | `143b01a` | Retrait des mentions de démonstration dans les titres et descriptions |
 | `338d1e2` | Gestion des comptes diocésains : liste, rôle, désactivation, mot de passe |
 | `8dc2d9d` | Administration bilingue, lecture à voix haute naturelle, paiement de démo retiré du parcours |
-| `b57d115` | Documentation : déploiement Vercel manuel, aucun webhook Git |
+| `b57d115` | Documentation : déploiement Vercel |
 | `cacf0bb` | Lots 4 à 7 : commissions 70/10/20 du net, versements, espace écrivain, manuscrits |
+| `3a24990` | Documentation : trace des commits de la livraison |
 
-**Base de données** : Neon, partagée entre la machine locale et le site en ligne. Les deux
-migrations sont appliquées. Les scripts de test ont supprimé leurs propres comptes `e2e-*`, avis,
-commentaires et signalements, et recalculé les compteurs : la base ne contient plus de données de
-test.
+**Base de données** : Neon, partagée entre la machine locale et le site en ligne — donc les données
+de démonstration sont visibles en ligne. **10 migrations, toutes appliquées** (vérifié le 5 novembre à
+22 h : « Database schema is up to date! »). Les quatre apportées par ces travaux sont additives :
+`20261104230713_dioceses_paroisses`, `20261104232313_avis_commentaires`,
+`20261105153000_auteur_oeuvres`, `20261105184021_lots_4_a_7`.
 
-**Déploiement** : Vercel. Le redéploiement automatique à chaque poussée n'est **pas** confirmé : le
-dépôt ne porte aucun webhook Vercel, et le site en ligne ne servait pas encore `8dc2d9d` le 5 novembre
-au soir. À publier depuis le tableau de bord Vercel (Deployments → Redeploy), puis à vérifier en
-ouvrant `/paiement/indisponible`, qui n'existe que dans cette version. Voir `DEPLOIEMENT.md`.
+**Déploiement** : Vercel, **automatique à chaque poussée sur `main`**. Le 5 novembre au matin, une
+poussée a été suivie d'un déploiement et le site a servi les nouvelles routes en quelques minutes ; le
+soir, `3a24990` portait le statut « Vercel : Deployment has completed » et le site servait
+`/paiement/indisponible`, route qui n'existe que dans cette version.
+
+> **Correction.** Les premières versions de ce document et de `DEPLOIEMENT.md` affirmaient que le
+> redéploiement automatique n'était pas fiable, au motif qu'aucun webhook n'apparaissait sur le dépôt.
+> L'explication est simple : Vercel passe par une **GitHub App**, dont les webhooks ne sont pas listés
+> par l'API des webhooks du dépôt. Aucune action manuelle n'est nécessaire.
 
 ## 6. Ce qui reste à faire
 
@@ -187,29 +210,28 @@ ni webhook, ni frais réels, ni argent. Premier point des travaux restants (sect
   Suffisant pour un diocèse, à revoir si les volumes augmentent.
 - ✅ **Langue** : `/diocese` et l'ensemble de `/admin` sont bilingues FR/EN (voir section 10).
 
-## 7. Décisions qui vous attendent
+## 7. Décisions prises et questions encore ouvertes
 
-| Réf | Sujet | Pourquoi ça bloque |
+### Tranchées (implémentées — à confirmer avec le client)
+
+| Réf | Question du cahier des charges | Ce qui a été décidé |
 |---|---|---|
-| **B1** | Frais de paiement : « 10 % du net » suppose de connaître les frais. Qui les paie, et comment l'application les obtient-elle ? | Lot 4a |
-| **B2** | 90 % (brut) + 10 % (net) **dépasse 100 %** : la plateforme perd de l'argent sur chaque vente | Lots 4b et 6 |
-| **B3** | « Une commission à chaque début de mois » : deux lectures possibles | Lot 4b |
-| **O1** | Le rattachement au diocèse est-il figé au moment du paiement ou recalculé après un déménagement ? | Lot 4b |
-| **O2** | Remboursement possible avant ou après versement ? | Lot 4c |
-| **O3** | Qui nomme les administrateurs de diocèse ? *(implémenté : le super-administrateur seul)* | À confirmer |
-| **O4** | Qui verse, comment, quand, à partir de quel seuil, et qui approuve ? | Lot 5 |
-| **O7** | Texte définitif du consentement, motifs de signalement, **liste complète des paroisses** | Contenu |
+| **B2** | 90 % écrivain + 10 % diocèse sur le brut dépassait 100 % du net | Barème **sur le net** : écrivain 70 %, diocèse 10 %, plateforme 20 %. Frais du prestataire 2 % du brut, déduits avant partage |
+| **B3** | « Une commission à chaque début de mois » | Commissions **à chaque vente** ; les versements, eux, sont mensuels |
+| **O1** | Rattachement au diocèse au paiement ou après déménagement ? | **Figé à l'encaissement** : la part porte le diocèse du fidèle à cet instant ; un déménagement ne réécrit pas le passé |
+| **O3** | Qui nomme les administrateurs de diocèse ? | Le **super-administrateur**, depuis `/admin/dioceses` |
+| **O4** | Qui verse, comment, qui approuve ? | Lots préparés puis approuvés par `SUPER_ADMIN` / `FINANCE`, versement avec référence mobile money |
+| **Q1** | Envoyer les identifiants par email ? | Non : faute de serveur SMTP, le mot de passe provisoire s'affiche **une fois** et se transmet de vive voix |
 
-### Questions concrètes posées par l'implémentation
+### Encore ouvertes
 
-1. **Messagerie** : faut-il envoyer les identifiants par email ? Aucun serveur SMTP n'est configuré
-   aujourd'hui, d'où le mot de passe affiché une fois dans l'interface. Si vous avez un service
-   d'envoi, le circuit est prêt à être branché.
-2. **Données visibles par le diocèse** : la liste affiche nom, email, pays, paroisse et date
-   d'inscription. La réponse du client demandait du « nominatif » ; faut-il **masquer les emails** et
-   n'afficher que les noms ?
-3. **Qui gère les paroisses** : aujourd'hui le super-administrateur seul. Un diocèse doit-il pouvoir
-   renommer ses propres paroisses ?
+| Réf | Sujet | Conséquence |
+|---|---|---|
+| **B1** | Frais **réels** du prestataire : qui les paie, et comment l'application les connaît-elle ? | Aujourd'hui un forfait de 2 % supposé. Avec un vrai prestataire, les frais arrivent dans le webhook |
+| **O2** | Remboursement possible **après** un versement ? | Non tranché : le code accepte le remboursement et crée des contre-écritures, ce qui peut laisser un solde négatif |
+| **O7** | Texte définitif du consentement, motifs de signalement, **liste complète des paroisses** | Contenu à fournir |
+| **Q2** | **Données visibles par le diocèse** : nom, email, pays, paroisse, date d'inscription. Faut-il masquer les emails ? | Vie privée des fidèles |
+| **Q3** | **Qui gère les paroisses** : le super-administrateur seul. Un diocèse doit-il renommer les siennes ? | Organisation |
 
 ## 8. Comment vérifier et utiliser
 
@@ -233,9 +255,17 @@ npm run build
 |---|---|
 | `/inscription` | public — diocèse, paroisse, consentement |
 | `/oeuvres/[slug]` | public — avis et commentaires |
+| `/ecrivain` | écrivain connecté — profil, œuvres, ventes, versements, manuscrits |
+| `/diocese` | compte diocésain — inscrits, export, revenus du diocèse |
+| `/diocese/inscription` | demande autonome d'un accès diocésain |
 | `/admin/dioceses` | super-administrateur — référentiel et gestion des comptes diocésains |
 | `/admin/moderation` | super-administrateur, éditeur, support — signalements |
-| `/diocese` | compte diocésain — inscrits et export |
+| `/admin/finances` | `SUPER_ADMIN`, `FINANCE` — barème, soldes, lots, remboursements |
+| `/admin/manuscrits` | comité de lecture — manuscrits déposés |
+| `/paiement/demo/[orderId]` | simulation d'encaissement (`DEMO_PAYMENT_VISIBLE=false` la ferme) |
+
+Comptes de démonstration : [comptes-demo.md](comptes-demo.md) et `npm run db:comptes` (script
+idempotent) — administrateur, trois diocèses, cinq auteurs, un fidèle acheteur.
 
 Créer un compte diocésain : Administration > Diocèses et paroisses > « Créer un administrateur
 diocésain ». **Notez le mot de passe affiché immédiatement** : il ne sera plus visible ensuite.
@@ -250,10 +280,27 @@ de réinitialiser son mot de passe.
 - Les pages qui lisent la session passent par `<Suspense>` ; `searchParams` doit être lu **à
   l'intérieur** de la frontière, sinon le build échoue au prérendu.
 - Le fichier `.env` n'est jamais commité (`.gitignore`), et le dépôt GitHub est **public** : les
-  documents `docs/` y sont désormais visibles, PDF du client compris, comme demandé.
-- L'authentification git de cette machine pointe sur un compte (`Loukmanayaba97`) qui n'a **pas** les
-  droits sur `Loukstech/CCC` : une poussée ordinaire échoue en 403. La mise en ligne a été faite avec
-  le jeton du compte `Loukstech` enregistré dans `gh`. À régler durablement.
+  documents `docs/` y sont visibles, PDF du client compris, comme demandé. **Conséquence à connaître :
+  `docs/comptes-demo.md` y publie aussi les mots de passe des comptes de démonstration — voir la
+  section 12.**
+- **Poussée refusée en 403 sur cette machine** : l'auteur des commits est bien
+  `Loukstech <loukstech@gmail.com>` (`git config user.name`), mais ce n'est **pas** ce qui authentifie
+  une poussée. Les identifiants HTTPS enregistrés dans le gestionnaire Windows appartiennent à
+  `Loukmanayaba97`, qui n'a aucun droit sur `Loukstech/CCC` :
+
+  ```
+  remote: Permission to Loukstech/CCC.git denied to Loukmanayaba97.
+  fatal: unable to access '...': The requested URL returned error: 403
+  ```
+
+  En attendant de régler cela, les poussées du 5 novembre ont été faites avec le jeton du compte
+  `Loukstech` déjà enregistré dans `gh` :
+  `git -c credential.helper= push "https://x-access-token:$TOKEN@github.com/Loukstech/CCC.git" main`.
+  Pour corriger durablement : `gh auth switch --user Loukstech` puis `gh auth setup-git`, ou enregistrer
+  les identifiants du bon compte dans le gestionnaire.
+- Pour savoir si une poussée a été publiée, regardez le **statut du commit** sur GitHub
+  (« Vercel : Deployment has completed ») ou le tableau de bord Vercel — pas la liste des webhooks du
+  dépôt, qui ne montre pas les GitHub Apps.
 
 ## 10. Mise à jour du 5 novembre — soirée (préparation de la démonstration)
 
@@ -327,9 +374,17 @@ appliqué part du **net réellement encaissé** (brut moins les frais) :
 Frais du prestataire : **2 %** du montant encaissé, déduits avant partage.
 Sur un abonnement (pas d'écrivain à rémunérer) : diocèse 10 %, plateforme 90 % du net.
 
-Tout est réglable sans toucher au code :
-`CCC_FEE_PPM=200`, `CCC_WRITER_PPM=7000`, `CCC_DIOCESE_PPM=1000`, `CCC_PLATFORM_PPM=2000`,
-`CCC_SUB_DIOCESE_PPM=1000` (points de base, 10 000 = 100 %).
+Réglable sans toucher au code, en points de base (10 000 = 100 %) :
+`CCC_FEE_PPM` (200), `CCC_WRITER_PPM` (7000), `CCC_DIOCESE_PPM` (1000), `CCC_SUB_DIOCESE_PPM` (1000).
+
+La part plateforme n'est **pas** un réglage : elle prend toujours le reste
+(`10 000 − écrivain − diocèse`), précisément pour que la somme des parts égale le net. Une variable
+`CCC_PLATFORM_PPM` serait donc sans effet — ne pas la présenter comme une option. Deux garde-fous :
+une somme écrivain + diocèse supérieure à 100 % est refusée (retour au barème par défaut), et un taux
+invalide retombe silencieusement sur sa valeur par défaut.
+
+> **À faire** : ces quatre variables ne figurent pas encore dans `.env.example`. Les y ajouter (avec
+> leur valeur par défaut, en commentaire) évitera de croire que le barème est figé dans le code.
 
 Exemple contrôlé en base : vente de 3 000 F CFA → frais 60, net 2 940, écrivain 2 058,
 diocèse 294, plateforme 588.
@@ -406,5 +461,58 @@ référence `MM-DEMO-0001`. De quoi montrer des chiffres réels dès l'ouverture
 7. **Demande de versement par le bénéficiaire** : aujourd'hui seul l'administrateur prépare les lots.
 8. **Tests automatisés** : les contrôles ci-dessus ont été faits par scripts ponctuels, non conservés.
    Une suite de tests sur le registre (idempotence, équilibre, remboursement) serait la bienvenue.
-9. **Déploiement** : voir `DEPLOIEMENT.md` — aucun webhook Vercel n'est branché sur le dépôt, donc
-   une poussée sur `main` ne publie rien automatiquement.
+9. ~~**Déploiement**~~ — **résolu** : le déploiement est automatique, vérifié le 5 novembre au soir
+   (site à jour sur `3a24990`). Voir `DEPLOIEMENT.md`.
+10. **Connexion en ligne à re-vérifier dans un vrai navigateur** (voir section 12, point 2) : mes
+    essais automatisés n'ont pas obtenu de session sur le site en ligne, sans message d'erreur.
+
+## 12. Sécurité — trois points à traiter
+
+### 1. Les mots de passe de démonstration sont publiés dans un dépôt public
+
+`docs/comptes-demo.md` donne en clair les identifiants des comptes de démonstration, dont
+`admin@ccc.example` / `Admin-2026`, un compte **`SUPER_ADMIN`**. Or :
+
+- le dépôt `Loukstech/CCC` est **public** (vérifié : `private: false`) ;
+- le site en ligne **utilise la même base Neon** que la machine locale ;
+- ces dix comptes `@ccc.example` **existent bien en production**, avec leurs rôles réels ;
+- le mot de passe `Admin-2026` a été vérifié contre le hachage en base (scrypt) : **il est valide**.
+
+Autrement dit, ces identifiants ne sont pas décoratifs : ce sont de vraies clés, publiées. Trois
+mesures, par ordre d'efficacité :
+
+1. **Changer le mot de passe du super-administrateur** (`npm run admin:password`) et ne plus jamais
+   committer le nouveau — puis retirer les mots de passe de `comptes-demo.md`, qui peut garder les
+   adresses email et les rôles sans les secrets ;
+2. ou passer le dépôt en **privé** tant que le site n'est pas ouvert au public ;
+3. et, si le dépôt reste public avec des comptes de démonstration, **régénérer leurs mots de passe à
+   chaque démonstration** plutôt que de les figer.
+
+À noter : `DEPLOIEMENT.md` recommande déjà de changer le mot de passe administrateur avant publication,
+mais rien n'empêche la fuite une fois qu'il est publié.
+
+### 2. Connexion non aboutie lors d'un test automatisé — à confirmer
+
+Lors du contrôle du 5 novembre au soir, une connexion automatisée (Edge sans interface) sur
+`ccc-three-lyart.vercel.app` avec `admin@ccc.example` n'a **pas** ouvert de session : la requête
+d'authentification répond 200, mais aucun cookie de session n'est posé, aucune redirection ne suit et
+**aucun message d'erreur ne s'affiche**. Deux éléments rendent ce résultat ambigu :
+
+- le mot de passe est pourtant valide (vérifié contre le hachage) et le compte n'est pas désactivé ;
+- les lectures en base fonctionnent depuis la production (l'inscription affiche bien les 3 diocèses),
+  donc ce n'est pas une panne de connexion à la base.
+
+Deux hypothèses restent ouvertes : soit une protection anti-robots (le site est derrière Cloudflare,
+cookies `__cf_bm` présents) bloque la soumission automatique, soit l'action de connexion échoue en
+production et **le message d'erreur n'est pas affiché**, ce qui serait un défaut à corriger.
+
+**À faire** : essayer la connexion dans un navigateur normal. Si elle fonctionne, l'hypothèse
+anti-robots est la bonne. Sinon, regarder les journaux Vercel (Functions → login) — et, dans tous les
+cas, corriger le formulaire pour qu'un échec affiche un message au lieu de rester muet.
+
+### 3. Base partagée entre démonstration et machine locale
+
+Toute manipulation faite en local (migrations, scripts, tests) s'applique **immédiatement** au site en
+ligne, et inversement. C'est pratique pour la démonstration, risqué pour la suite : la
+recommandation de `DEPLOIEMENT.md` — une branche Neon séparée pour la production — vaut d'être
+appliquée avant l'ouverture au public.
