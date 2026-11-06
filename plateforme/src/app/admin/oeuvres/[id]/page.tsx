@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { deletePrice, deleteSubtitle, savePrice, saveRights, saveSubtitle, saveVideoKey } from "@/app/actions/admin-works";
+import { deletePrice, deleteSubtitle, linkTranslation, savePrice, saveRights, saveSubtitle, saveVideoKey, setPrimaryEdition, unlinkTranslation } from "@/app/actions/admin-works";
 import { ActionForm, CheckField, CheckGroup, Field, SelectField } from "@/components/ActionForm";
 import { COUNTRIES, countryName, currencyOf } from "@/lib/countries";
 import { formatMoney } from "@/lib/currency";
@@ -9,6 +9,7 @@ import { CATALOG_ROLES, FILE_ROLES, PRICE_ROLES, RIGHTS_ROLES, requireStaff } fr
 import { db } from "@/lib/db";
 import { t } from "@/lib/i18n";
 import { getLang } from "@/lib/lang";
+import { languageName } from "@/lib/languages";
 import type { EpubError } from "@/lib/epub";
 
 // Écran authentifié et bilingue : il lit les cookies (langue, session), donc il ne peut pas être prérendu.
@@ -67,6 +68,8 @@ async function Manage({
       status: true,
       access: true,
       fileKey: true,
+      translationGroupId: true,
+      translationPrimary: true,
       prices: { orderBy: { country: "asc" }, select: { id: true, country: true, currency: true, amount: true } },
       licenses: { orderBy: { createdAt: "asc" }, select: { countries: true, contractRef: true, allowWeb: true, allowOffline: true, startsAt: true, endsAt: true } },
       subtitles: { orderBy: [{ isDefault: "desc" }, { lang: "asc" }], select: { id: true, lang: true, label: true, src: true, isDefault: true } },
@@ -78,7 +81,28 @@ async function Manage({
   const canFile = FILE_ROLES.includes(role);
   const canRights = RIGHTS_ROLES.includes(role);
   const canPrice = PRICE_ROLES.includes(role);
+  const canCatalog = CATALOG_ROLES.includes(role);
   const license = work.licenses[0];
+
+  // Éditions du même titre, puis fiches libres auxquelles on peut relier celle-ci.
+  const editions = work.translationGroupId
+    ? await db.work.findMany({
+        where: { translationGroupId: work.translationGroupId },
+        orderBy: [{ translationPrimary: "desc" }, { language: "asc" }],
+        select: { id: true, slug: true, title: true, language: true, translationPrimary: true },
+      })
+    : [];
+  const candidates = canCatalog
+    ? await db.work.findMany({
+        where: {
+          id: { notIn: [work.id, ...editions.map((e) => e.id)] },
+          type: work.type,
+          translationGroupId: null,
+        },
+        orderBy: { title: "asc" },
+        select: { id: true, title: true, language: true },
+      })
+    : [];
   const day = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : "");
 
   const fileError = typeof query.erreur === "string" ? query.erreur : null;
@@ -106,6 +130,64 @@ async function Manage({
           </Link>
         </p>
       </header>
+
+      <section className={card}>
+        <h2 className={h2}>{t(lang, "wk.editions")}</h2>
+        <p className="mt-1 text-sm text-muted">{t(lang, "wk.editionsHint")}</p>
+        <ul className="mt-3 divide-y divide-line">
+          {editions.length === 0 && <li className="py-2 text-sm text-muted">{t(lang, "wk.editionsNone")}</li>}
+          {editions.map((edition) => (
+            <li key={edition.id} className="flex items-start justify-between gap-3 py-2 text-sm">
+              <span className="min-w-0">
+                <strong>{languageName(edition.language)}</strong>{" "}
+                <span className="text-muted">{edition.language.toUpperCase()}</span>
+                {edition.translationPrimary && (
+                  <span className="ml-2 rounded bg-brand/10 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-brand uppercase">
+                    {t(lang, "wk.editionPrimary")}
+                  </span>
+                )}
+                <span className="mt-0.5 block truncate text-xs text-muted">
+                  <Link href={`/oeuvres/${edition.slug}`} className="underline underline-offset-4 hover:text-brand">
+                    {edition.title}
+                  </Link>
+                  {edition.id === work.id && ` · ${t(lang, "wk.thisRecord")}`}
+                </span>
+              </span>
+              {canCatalog && (
+                <span className="flex shrink-0 items-center gap-1">
+                  {!edition.translationPrimary && (
+                    <form action={setPrimaryEdition}>
+                      <input type="hidden" name="id" value={edition.id} />
+                      <button type="submit" className="rounded-lg px-2 py-1 text-brand hover:bg-brand/10">
+                        {t(lang, "wk.editionPrimarySet")}
+                      </button>
+                    </form>
+                  )}
+                  <form action={unlinkTranslation}>
+                    <input type="hidden" name="id" value={edition.id} />
+                    <button type="submit" className="rounded-lg px-2 py-1 text-red-600 hover:bg-red-50">
+                      {t(lang, "wk.editionDetach")}
+                    </button>
+                  </form>
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+        {canCatalog && candidates.length > 0 && (
+          <div className="mt-4 border-t border-line pt-4">
+            <p className="mb-2 text-sm font-medium text-ink">{t(lang, "wk.editionLink")}</p>
+            <ActionForm action={linkTranslation} submitLabel={t(lang, "wk.editionLinkSubmit")} lang={lang}>
+              <input type="hidden" name="workId" value={work.id} />
+              <SelectField
+                label={t(lang, "wk.editionPick")}
+                name="otherId"
+                options={candidates.map((c) => ({ value: c.id, label: `${c.title} (${c.language.toUpperCase()})` }))}
+              />
+            </ActionForm>
+          </div>
+        )}
+      </section>
 
       {work.type === "BOOK" && (
         <section className={card}>

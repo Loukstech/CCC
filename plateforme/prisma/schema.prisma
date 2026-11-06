@@ -192,6 +192,12 @@ model Work {
   pages       Int?
   publishedAt DateTime?
   createdAt   DateTime   @default(now())
+  /// Identifiant commun aux éditions d'un même titre (la même œuvre en plusieurs langues).
+  /// Vide : l'œuvre n'a pas de traduction connue. Plusieurs œuvres peuvent partager cette valeur.
+  translationGroupId String?
+  /// Édition de référence du groupe : c'est elle que le catalogue affiche, pour ne pas montrer
+  /// trois fois le même titre. Les autres restent accessibles par leur adresse et par le sélecteur.
+  translationPrimary Boolean @default(true)
 
   prices    Price[]
   licenses  License[]
@@ -210,6 +216,7 @@ model Work {
 
   @@index([type, status])
   @@index([authorId])
+  @@index([translationGroupId])
 }
 
 // Sous-titres d'une vidéo (films et documentaires). Une piste par langue et par œuvre.

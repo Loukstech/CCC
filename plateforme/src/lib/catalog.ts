@@ -1,5 +1,6 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
+import type { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import type { Lang } from "@/lib/i18n";
 
@@ -20,16 +21,26 @@ export const publicSelect = {
   downloadable: true,
   fileKey: true,
   publishedAt: true,
+  translationGroupId: true,
+  translationPrimary: true,
   prices: { select: { country: true, currency: true, amount: true } },
   licenses: { select: { countries: true, allowWeb: true, allowOffline: true, startsAt: true, endsAt: true } },
 } as const;
+
+/**
+ * Une seule fiche par titre traduit dans les listes : l'édition de référence. Les autres éditions
+ * restent accessibles par leur adresse et par le sélecteur de langue de la fiche.
+ */
+const NOT_A_SECOND_EDITION: Prisma.WorkWhereInput = {
+  OR: [{ translationGroupId: null }, { translationPrimary: true }],
+};
 
 export async function getPublishedWorks() {
   "use cache";
   cacheTag(WORKS_TAG);
   cacheLife("minutes");
   return db.work.findMany({
-    where: { status: "PUBLISHED" },
+    where: { status: "PUBLISHED", ...NOT_A_SECOND_EDITION },
     orderBy: { publishedAt: "desc" },
     select: publicSelect,
   });
@@ -52,14 +63,31 @@ export async function searchPublishedWorks(query: string) {
   return db.work.findMany({
     where: {
       status: "PUBLISHED",
-      OR: [
-        { title: { contains: query, mode: "insensitive" } },
-        { author: { contains: query, mode: "insensitive" } },
-        { description: { contains: query, mode: "insensitive" } },
+      AND: [
+        NOT_A_SECOND_EDITION,
+        {
+          OR: [
+            { title: { contains: query, mode: "insensitive" } },
+            { author: { contains: query, mode: "insensitive" } },
+            { description: { contains: query, mode: "insensitive" } },
+          ],
+        },
       ],
     },
     orderBy: { publishedAt: "desc" },
     select: publicSelect,
+  });
+}
+
+/** Les éditions d'un même titre (versions en plusieurs langues), référence en tête. */
+export async function getEditions(groupId: string) {
+  "use cache";
+  cacheTag(WORKS_TAG);
+  cacheLife("minutes");
+  return db.work.findMany({
+    where: { translationGroupId: groupId, status: "PUBLISHED" },
+    orderBy: [{ translationPrimary: "desc" }, { language: "asc" }],
+    select: { id: true, slug: true, title: true, language: true, translationPrimary: true },
   });
 }
 

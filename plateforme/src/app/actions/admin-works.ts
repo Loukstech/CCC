@@ -1,8 +1,9 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath, updateTag } from "next/cache";
 import { currencyOf, isCountryCode, toMinorUnits } from "@/lib/countries";
-import { FILE_ROLES, PRICE_ROLES, RIGHTS_ROLES, requireStaff } from "@/lib/dal";
+import { CATALOG_ROLES, FILE_ROLES, PRICE_ROLES, RIGHTS_ROLES, requireStaff } from "@/lib/dal";
 import { isVideoKey } from "@/lib/video";
 import { db } from "@/lib/db";
 import { WORKS_TAG } from "@/lib/catalog";
@@ -187,4 +188,103 @@ export async function deleteSubtitle(formData: FormData) {
     data: { actorId: user.id, action: "work.subtitle.delete", target: track.workId, details: { lang: track.lang } },
   });
   refresh(track.workId);
+}
+
+/**
+ * Relie deux œuvres comme les éditions d'un même titre (la même histoire en plusieurs langues).
+ *
+ * Les deux fiches restent distinctes — chacune garde son fichier, son prix, sa licence et ses ventes —
+ * mais elles partagent un identifiant de groupe. C'est ce groupe qui alimente le sélecteur de langue
+ * sur la fiche publique, et qui évite que le catalogue affiche trois fois le même titre.
+ */
+export async function linkTranslation(_: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireStaff(CATALOG_ROLES);
+  const lang = await getLang();
+  const workId = String(formData.get("workId") ?? "");
+  const otherId = String(formData.get("otherId") ?? "");
+  const values = { otherId };
+
+  if (!otherId || otherId === workId) return { error: t(lang, "wk.errTranslationPick"), values };
+
+  const [work, other] = await Promise.all([
+    db.work.findUnique({ where: { id: workId }, select: { id: true, type: true, translationGroupId: true } }),
+    db.work.findUnique({ where: { id: otherId }, select: { id: true, type: true, translationGroupId: true } }),
+  ]);
+  if (!work || !other) return { error: t(lang, "wk.errWork"), values };
+  if (work.type !== other.type) return { error: t(lang, "wk.errTranslationType"), values };
+  // Deux groupes différents ne fusionnent pas : on demande de détacher d'abord, pour ne rien perdre.
+  if (work.translationGroupId && other.translationGroupId && work.translationGroupId !== other.translationGroupId) {
+    return { error: t(lang, "wk.errTranslationBusy"), values };
+  }
+
+  const groupId = work.translationGroupId ?? other.translationGroupId ?? randomUUID();
+  const currentPrimary = await db.work.findFirst({
+    where: { translationGroupId: groupId, translationPrimary: true },
+    select: { id: true },
+  });
+  // L'édition de référence déjà en place est conservée ; sinon la fiche en cours devient la référence.
+  const primaryId = currentPrimary?.id ?? workId;
+
+  await db.$transaction([
+    db.work.update({
+      where: { id: workId },
+      data: { translationGroupId: groupId, translationPrimary: workId === primaryId },
+    }),
+    db.work.update({
+      where: { id: otherId },
+      data: { translationGroupId: groupId, translationPrimary: otherId === primaryId },
+    }),
+  ]);
+  await db.auditLog.create({
+    data: { actorId: user.id, action: "work.translation.link", target: workId, details: { otherId, groupId } },
+  });
+  refresh(workId);
+  refresh(otherId);
+  return { notice: t(lang, "wk.translationLinked") };
+}
+
+/** Détache une œuvre du groupe d'éditions auquel elle appartenait. */
+export async function unlinkTranslation(formData: FormData) {
+  const user = await requireStaff(CATALOG_ROLES);
+  const id = String(formData.get("id") ?? "");
+  const work = await db.work.findUnique({
+    where: { id },
+    select: { id: true, translationGroupId: true },
+  });
+  if (!work?.translationGroupId) return;
+  const groupId = work.translationGroupId;
+
+  await db.work.update({ where: { id }, data: { translationGroupId: null, translationPrimary: true } });
+
+  // Le groupe doit garder une édition de référence, même après un départ.
+  const rest = await db.work.findMany({
+    where: { translationGroupId: groupId },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, translationPrimary: true },
+  });
+  if (rest.length > 0 && !rest.some((w) => w.translationPrimary)) {
+    await db.work.update({ where: { id: rest[0].id }, data: { translationPrimary: true } });
+  }
+
+  await db.auditLog.create({
+    data: { actorId: user.id, action: "work.translation.unlink", target: id, details: { groupId } },
+  });
+  refresh(id);
+}
+
+/** Choisit l'édition que le catalogue met en avant pour un titre traduit. */
+export async function setPrimaryEdition(formData: FormData) {
+  const user = await requireStaff(CATALOG_ROLES);
+  const id = String(formData.get("id") ?? "");
+  const work = await db.work.findUnique({ where: { id }, select: { id: true, translationGroupId: true } });
+  if (!work?.translationGroupId) return;
+
+  await db.$transaction([
+    db.work.updateMany({ where: { translationGroupId: work.translationGroupId }, data: { translationPrimary: false } }),
+    db.work.update({ where: { id }, data: { translationPrimary: true } }),
+  ]);
+  await db.auditLog.create({
+    data: { actorId: user.id, action: "work.translation.primary", target: id, details: {} },
+  });
+  refresh(id);
 }

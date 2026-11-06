@@ -16,7 +16,8 @@ import { getCurrentUser } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { getCountry, isAvailable } from "@/lib/rights";
 import { Money } from "@/components/Money";
-import { getPublishedWork, getPublishedWorks, priceFor, toCard } from "@/lib/catalog";
+import { getEditions, getPublishedWork, getPublishedWorks, priceFor, toCard } from "@/lib/catalog";
+import { languageName } from "@/lib/languages";
 
 const UNIVERSE = { BOOK: "livre", FILM: "film", DOCUMENTARY: "doc" } as const;
 
@@ -53,6 +54,10 @@ async function Work({ params }: { params: PageProps<"/oeuvres/[slug]">["params"]
     : false;
   const subscribed = user ? !!(await getActiveSubscription(user.id)) : false;
   const price = priceFor(work.prices, country);
+  // Autres éditions du même titre : la même œuvre dans d'autres langues, si elles ont été reliées.
+  const otherEditions = work.translationGroupId
+    ? (await getEditions(work.translationGroupId)).filter((e) => e.id !== work.id)
+    : [];
   const countries = [...new Set(work.licenses.flatMap((l) => l.countries))];
   const offline = work.licenses.some((l) => l.allowOffline);
   const priceNode =
@@ -90,6 +95,20 @@ async function Work({ params }: { params: PageProps<"/oeuvres/[slug]">["params"]
               {work.title}
             </h1>
             {work.author && <p className="mt-2 text-lg text-white/70">{work.author}</p>}
+            {otherEditions.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="text-sm text-white/60">{t(lang, "work.editions")}</span>
+                {otherEditions.map((edition) => (
+                  <Link
+                    key={edition.id}
+                    href={`/oeuvres/${edition.slug}`}
+                    className="rounded-full border border-white/30 px-3 py-1 text-sm font-medium text-white/90 transition-colors hover:border-white/60 hover:bg-white/10"
+                  >
+                    {languageName(edition.language)}
+                  </Link>
+                ))}
+              </div>
+            )}
             <WorkRating workId={work.id} lang={lang} />
             {work.description && (
               <p className="mt-5 max-w-2xl leading-8 text-white/85">{work.description}</p>
