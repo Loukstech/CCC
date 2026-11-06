@@ -2,10 +2,11 @@
 
 > Suite de [etat-du-projet-2026-11-05.md](./etat-du-projet-2026-11-05.md), qui couvre les lots 1 à 7.
 >
-> **Dernière révision : 6 novembre, 22 h 45.** Le local, GitHub (`origin/main`) et le site en ligne
-> servent le même commit d'application (`a4c17ef`) ; ce document ne modifie que la documentation.
-> Base Neon à jour (migrations `20261106210428_sous_titres` et `20261106221656_editions_reliees`
-> appliquées). Déploiement Vercel automatique.
+> **Dernière révision : 7 novembre, 0 h 45.** Le local, GitHub (`origin/main`) et le site en ligne
+> servent le même commit d'application (`c0c2af3`) ; ce document ne modifie que la documentation.
+> Base Neon à jour (migrations `20261106210428_sous_titres`, `20261106221656_editions_reliees` et
+> `20261106230137_publicites_mesurees` appliquées). Déploiement Vercel déclenché à la main par le
+> lien de déploiement : le déclenchement automatique sur `push` n'a pas fonctionné pour ce commit.
 >
 > Ce document décrit **ce qui a été ajouté aujourd'hui**, l'**état de la base**, ce qui **reste à
 > faire** et les **décisions qui vous attendent**.
@@ -19,6 +20,8 @@
 | — | **Deux livres du client** importés, lecture à voix haute testée | **Livré, en ligne** |
 | — | **Sous-titres** des films et documentaires (WebVTT, FR/EN) | **Livré, en ligne, vérifié** |
 | — | **Éditions reliées** : un même titre en plusieurs langues | **Livré, en ligne, vérifié** |
+| — | **Publicités mesurées** : affichages, clics, taux de clic, détail par jour | **Livré, en ligne, vérifié** |
+| — | **Publicité intercalée** pendant les contenus gratuits | **Livré, en ligne, vérifié** |
 
 Le détail du lot 8 est dans [lot-8-partenariats-et-directs.md](./lot-8-partenariats-et-directs.md).
 
@@ -65,6 +68,7 @@ Résumé ; le détail est dans le document dédié.
 | Codes de partenariat | 4, aucun consommé |
 | Événements en direct | 1 (`messe-de-demonstration`, programmé) |
 | Badges de diffuseur | 1 (super-administrateur) |
+| Publicités | 5 de démonstration, un par emplacement |
 
 La base a été remise à zéro le 6 novembre (aucune commande, aucun abonnement, aucune commission). Les
 chiffres du jeu de données « finances » décrits dans le document du 5 novembre ne sont donc plus
@@ -156,3 +160,48 @@ Ce qui reste :
 | Traduire réellement les textes | La liaison ne traduit rien : elle regroupe. Il faut produire l'EPUB dans chaque langue (traduction hors ligne, glossaire liturgique, relecture humaine — la traduction automatique est faible en fon, yoruba et nagot). |
 | Sélecteur de langue sur la page de lecture | Aujourd'hui le sélecteur est sur la fiche ; on peut aussi le mettre dans le lecteur, pour changer d'édition sans revenir en arrière. |
 | Fusion de groupes | Deux groupes distincts ne se fusionnent pas : il faut détacher avant de relier. Suffisant pour la démonstration, à revoir si le catalogue grandit. |
+
+## 9. Publicités : mesurer, puis intercaler
+
+Livré et vérifié en ligne (commit `c0c2af3`). Répond aux deux questions restées ouvertes : « l'espace
+pub qui défile, y as-tu pensé ? » et « une pub peut-elle se lancer pendant un contenu gratuit ? ».
+
+**Avant, le bandeau existait mais rien ne comptait les affichages** : impossible de facturer un
+annonceur, impossible de savoir si l'emplacement valait quelque chose. C'est le premier manque comblé.
+
+- **Modèle** : `Ad.impressions` (compteur de toujours) et table `AdDailyStat` (un enregistrement par
+  publicité et par jour : affichages, clics). Migration `20261106230137_publicites_mesurees`.
+  La journée est calculée à l'heure du pilote (UTC+1) : un affichage à 23 h 30 à Cotonou compte pour
+  le jour même, pas pour la veille comme le ferait l'heure UTC.
+- **Comptage** : `POST /api/ads/[id]/impression`, appelé une seule fois par publicité et par séance
+  (mémoire de session du navigateur). Un visiteur qui navigue ne gonfle donc pas le compteur. Le clic
+  alimente les deux compteurs, global et journalier.
+- **Écran `/admin/publicites`** : affichages, clics et taux de clic par publicité, plus un tableau
+  « Sept derniers jours » qui donne la base d'une facture mensuelle.
+- **Publicité intercalée** (`AdInterstitial`) : voile plein écran, mention « Publicité », compte à
+  rebours de 8 secondes, puis retour au contenu.
+  - **Œuvres gratuites seulement.** Un visiteur qui a payé ne la voit jamais.
+  - **Film** : après un temps de lecture réel (35 % de la durée, plafonné à 90 secondes). Mettre en
+    pause arrête le décompte. Le film est mis en pause pendant l'annonce et reprend ensuite tout seul.
+  - **Livre** : après une minute de présence sur la page de lecture.
+  - **Une seule fois par œuvre et par séance.**
+- **Nouvel emplacement `INTERSTITIAL`** dans le formulaire d'administration. À défaut d'annonce
+  prévue pour l'interruption, celles de la fiche d'œuvre sont utilisées : l'écran n'est jamais vide.
+- **Cinq publicités de démonstration** (`npm run db:ads`, idempotent) avec des visuels SVG locaux
+  dans `public/ads/`. Annonceurs fictifs, liens vers `exemple-ccc.test` : à remplacer.
+
+Vérifié en production : bandeau affiché et compté, publicité intercalée ouverte après 8 secondes de
+lecture du film gratuit (film en pause), compte à rebours puis reprise, statistiques à jour dans
+l'administration.
+
+Ce qui reste :
+
+| Sujet | Pourquoi |
+|---|---|
+| Vrais annonceurs et vrais visuels | Les cinq publicités actuelles sont des exemples. |
+| Facturation automatique | Les chiffres sont là, la facture se fait encore à la main. |
+| Règles de fréquence plus fines | Aujourd'hui : une interruption par œuvre et par séance. On peut ajouter un plafond par jour, ou interdire deux interruptions d'affilée. |
+| Emplacements dans le lecteur de livre | La publicité intercalée ne s'affiche pas *dans* l'EPUB, elle recouvre la page. Suffisant pour la démonstration. |
+
+Le mode d'emploi destiné au client est dans
+[guide-client-traductions-et-publicites.md](./guide-client-traductions-et-publicites.md).
