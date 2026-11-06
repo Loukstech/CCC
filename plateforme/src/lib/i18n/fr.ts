@@ -815,6 +815,8 @@ export const fr = {
   "part.signupSub": "Espace réservé aux auteurs et réalisateurs ayant signé un partenariat avec CCC.",
   "part.standardSignup": "Inscription standard (lecteur)",
   "part.accessDenied": "Votre compte n’est pas encore validé comme auteur partenaire. Utilisez le code remis lors de la signature du contrat, ou contactez l’administration.",
+  "part.blockedBody": "Vous êtes connecté avec {email}. Ce compte n’est pas encore reconnu comme auteur partenaire : si un contrat a été signé, l’administration doit valider votre profil depuis l’espace Partenariats.",
+  "part.blockedBack": "Retour à l’accueil",
   "part.code": "Code de partenariat",
   "part.codeHintRequired": "Code remis par l’administration après signature du contrat. Un seul usage, valable 30 jours.",
   "part.codeHintDemo": "Pendant la démonstration ce champ est facultatif ; un code saisi est tout de même vérifié et consommé.",

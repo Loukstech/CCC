@@ -5,6 +5,7 @@ import { AuthShell } from "@/components/AuthShell";
 import { PageFallback } from "@/components/PageFallback";
 import { ParishPicker } from "@/components/ParishPicker";
 import { COUNTRIES, countryName } from "@/lib/countries";
+import { getCurrentUser } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { t } from "@/lib/i18n";
 import { getLang } from "@/lib/lang";
@@ -29,6 +30,9 @@ async function WriterSignupContent({ searchParams }: { searchParams: Promise<{ a
   const lang = await getLang();
   const gated = partnerCodesRequired();
   const denied = (await searchParams).acces === "refuse";
+  // Un compte deja connecte mais non approuve ne doit pas voir un formulaire d'inscription :
+  // son adresse existe deja et la soumission echouerait. On explique la situation a la place.
+  const user = denied ? await getCurrentUser() : null;
   const dioceses = await db.diocese.findMany({
     where: { active: true },
     orderBy: { name: "asc" },
@@ -62,6 +66,23 @@ async function WriterSignupContent({ searchParams }: { searchParams: Promise<{ a
         </>
       }
     >
+      {user ? (
+        <div className="flex flex-col gap-4">
+          <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm leading-relaxed text-red-700 ring-1 ring-red-200">
+            {t(lang, "part.accessDenied")}
+          </p>
+          <p className="text-sm text-muted">
+            {t(lang, "part.blockedBody", { email: user.email ?? user.name ?? "" })}
+          </p>
+          <Link
+            href="/"
+            className="inline-flex h-11 items-center justify-center rounded-xl border border-line px-4 text-sm font-medium hover:bg-brand/5"
+          >
+            {t(lang, "part.blockedBack")}
+          </Link>
+        </div>
+      ) : (
+        <>
       {denied && (
         <p role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-xs leading-relaxed text-red-700 ring-1 ring-red-200">
           {t(lang, "part.accessDenied")}
@@ -104,6 +125,8 @@ async function WriterSignupContent({ searchParams }: { searchParams: Promise<{ a
           hint={t(lang, gated ? "part.codeHintRequired" : "part.codeHintDemo")}
         />
       </ActionForm>
+        </>
+      )}
     </AuthShell>
   );
 }

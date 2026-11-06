@@ -817,6 +817,8 @@ export const en: Record<Key, string> = {
   "part.signupSub": "Space reserved for authors and filmmakers who signed a partnership with CCC.",
   "part.standardSignup": "Standard signup (reader)",
   "part.accessDenied": "Your account is not yet approved as a partner writer. Use the code issued when the contract was signed, or contact the administration.",
+  "part.blockedBody": "You are signed in as {email}. This account is not yet recognised as a partner writer: if a contract was signed, the administration must approve your profile from the Partnerships screen.",
+  "part.blockedBack": "Back to home",
   "part.code": "Partnership code",
   "part.codeHintRequired": "Code issued by the administration after the contract is signed. Single use, valid 30 days.",
   "part.codeHintDemo": "During the demo this field is optional; a code you enter is still checked and consumed.",
