@@ -196,7 +196,9 @@ const page = (title, body) => `<?xml version="1.0" encoding="UTF-8"?>
 <body>${body}</body>
 </html>`;
 
-async function build({ slug, title, author, chapters }) {
+const DEMO_NOTE = "Livre de démonstration : texte fictif, uniquement pour tester le lecteur CCC.";
+
+async function build({ slug, title, author, chapters, note = DEMO_NOTE }) {
   const zip = new JSZip();
   zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
   zip.file(
@@ -269,7 +271,7 @@ ${files
     "OEBPS/titre.xhtml",
     page(
       title,
-      `<h1>${esc(title)}</h1><p>${esc(author)}</p><p><em>Livre de démonstration : texte fictif, uniquement pour tester le lecteur CCC.</em></p>`,
+      `<h1>${esc(title)}</h1><p>${esc(author)}</p>${note ? `<p><em>${esc(note)}</em></p>` : ""}`,
     ),
   );
   for (const f of files) {
@@ -287,7 +289,13 @@ ${files
 // Livres fournis par le client pour les tests de lecture (dont la lecture à voix haute).
 // Le texte est extrait des PDF une seule fois et versionné dans scripts/client-books.json :
 // le build Vercel n'a ni Python ni les PDF, il doit pouvoir régénérer ces EPUB seul.
-const clientBooks = JSON.parse(readFileSync(join(root, "scripts", "client-books.json"), "utf8"));
+const clientBooks = JSON.parse(readFileSync(join(root, "scripts", "client-books.json"), "utf8")).map(
+  (book) => ({
+    ...book,
+    // Ce sont de vrais documents fournis par le client : ne pas les présenter comme du texte fictif.
+    note: "Document fourni par le client pour les tests du lecteur et de la lecture à voix haute.",
+  }),
+);
 BOOKS.push(...clientBooks);
 
 mkdirSync(outDir, { recursive: true });
