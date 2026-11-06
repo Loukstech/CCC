@@ -1,4 +1,6 @@
 import "server-only";
+import { convertMinor } from "@/lib/currency";
+import { fedapay } from "@/lib/payments/fedapay";
 
 export type CheckoutInput = {
   orderId: string;
@@ -31,7 +33,22 @@ const demo: PaymentProvider = {
   },
 };
 
-const PROVIDERS: Record<string, PaymentProvider> = { demo };
+const PROVIDERS: Record<string, PaymentProvider> = { demo, fedapay };
+
+/**
+ * FedaPay n'encaisse qu'en XOF. Les prix définis dans une autre devise (EUR pour la France dans le jeu
+ * de démonstration, USD, GBP, NGN…) sont convertis au moment où la commande est créée : la commande,
+ * le registre des commissions, les soldes et les totaux restent ainsi dans une seule devise.
+ * Le sélecteur de devise du site reste un simple affichage indicatif.
+ */
+export function providerCharge(providerId: string, price: { currency: string; amount: number }) {
+  if (providerId !== "fedapay" || price.currency === "XOF") return price;
+  const amount = convertMinor(price.amount, price.currency, "XOF");
+  if (amount === null || amount <= 0) {
+    throw new Error(`Devise non convertible en XOF pour FedaPay : ${price.currency}`);
+  }
+  return { currency: "XOF", amount };
+}
 
 /**
  * La page de paiement simulée est-elle accessible ?

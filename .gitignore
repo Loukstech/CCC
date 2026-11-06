@@ -1,5 +1,8 @@
 .refact/
 exemple/
 
+# Notes locales de l'agent (mémoire de travail, ne pas publier)
+.workbuddy-ai/
+
 # Clés d'API (ne jamais publier)
 API USEFULL

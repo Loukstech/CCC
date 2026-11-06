@@ -7,7 +7,7 @@ import { priceFor } from "@/lib/catalog";
 import { getCurrentUser } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { markOrderFailed, markOrderPaid } from "@/lib/payments/fulfill";
-import { demoCheckoutVisible, getPaymentProvider } from "@/lib/payments";
+import { demoCheckoutVisible, getPaymentProvider, providerCharge } from "@/lib/payments";
 import { t } from "@/lib/i18n";
 import { getLang } from "@/lib/lang";
 import { isPlan, planPriceFor } from "@/lib/plans";
@@ -42,14 +42,16 @@ export async function startPurchase(formData: FormData) {
   const provider = getPaymentProvider();
   // Aucun prestataire réel branché : on ne crée pas de commande et on l'annonce clairement.
   if (provider.id === "demo" && !demoCheckoutVisible) redirect("/paiement/indisponible");
+  // FedaPay n'encaisse qu'en XOF : la commande est créée dans la devise réellement facturée.
+  const charge = providerCharge(provider.id, price);
   const order = await db.order.create({
-    data: { userId: user.id, workId: work.id, currency: price.currency, amount: price.amount, provider: provider.id },
+    data: { userId: user.id, workId: work.id, currency: charge.currency, amount: charge.amount, provider: provider.id },
     select: { id: true },
   });
   const checkout = await provider.createCheckout({
     orderId: order.id,
-    amount: price.amount,
-    currency: price.currency,
+    amount: charge.amount,
+    currency: charge.currency,
     description: work.title,
     customer: { name: user.name, email: user.email },
   });
@@ -71,14 +73,15 @@ export async function startSubscription(formData: FormData) {
 
   const provider = getPaymentProvider();
   if (provider.id === "demo" && !demoCheckoutVisible) redirect("/paiement/indisponible");
+  const charge = providerCharge(provider.id, price);
   const order = await db.order.create({
-    data: { userId: user.id, plan, currency: price.currency, amount: price.amount, provider: provider.id },
+    data: { userId: user.id, plan, currency: charge.currency, amount: charge.amount, provider: provider.id },
     select: { id: true },
   });
   const checkout = await provider.createCheckout({
     orderId: order.id,
-    amount: price.amount,
-    currency: price.currency,
+    amount: charge.amount,
+    currency: charge.currency,
     description: t(lang, "pay.subDescription", { plan: t(lang, `sub.planLower.${plan}`) }),
     customer: { name: user.name, email: user.email },
   });

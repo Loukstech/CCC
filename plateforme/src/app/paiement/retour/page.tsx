@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { t } from "@/lib/i18n";
 import { getLang } from "@/lib/lang";
+import { syncFedaPayOrder } from "@/lib/payments/fedapay";
 
 export const metadata = { title: "Résultat du paiement — CCC" };
 
@@ -29,7 +30,7 @@ async function Result({ searchParams }: { searchParams: PageProps<"/paiement/ret
   const order = id
     ? await db.order.findFirst({
         where: { id, userId: user.id },
-        select: { id: true, status: true, amount: true, currency: true, plan: true, work: { select: { title: true, slug: true } } },
+        select: { id: true, status: true, amount: true, currency: true, plan: true, provider: true, providerRef: true, work: { select: { title: true, slug: true } } },
       })
     : null;
 
@@ -44,13 +45,25 @@ async function Result({ searchParams }: { searchParams: PageProps<"/paiement/ret
     );
   }
 
+  // FedaPay ajoute ?id=…&status=… à l'URL de retour : ce statut n'est pas fiable. Si le webhook n'est
+  // pas encore passé, on revérifie la transaction auprès de l'API avant d'afficher quoi que ce soit.
+  const status =
+    order.provider === "fedapay"
+      ? await syncFedaPayOrder({
+          id: order.id,
+          providerRef: order.providerRef,
+          amount: order.amount,
+          status: order.status,
+        })
+      : order.status;
+
   const label = order.plan ? t(lang, "sub.name", { plan: t(lang, `sub.planLower.${order.plan}`) }) : (order.work?.title ?? t(lang, "pay.purchase"));
   const tone = {
     PAID: { icon: "✓", title: t(lang, "pay.paidTitle"), text: t(lang, "pay.paidText"), cls: "text-emerald-600" },
     PENDING: { icon: "…", title: t(lang, "pay.pendingTitle"), text: t(lang, "pay.pendingText"), cls: "text-amber-600" },
     FAILED: { icon: "✕", title: t(lang, "pay.failedTitle"), text: t(lang, "pay.failedText"), cls: "text-red-600" },
     REFUNDED: { icon: "↩", title: t(lang, "pay.refundedTitle"), text: t(lang, "pay.refundedText"), cls: "text-muted" },
-  }[order.status];
+  }[status];
 
   return (
     <div className="rounded-2xl border border-line bg-surface p-6 text-center shadow-sm">
@@ -64,17 +77,17 @@ async function Result({ searchParams }: { searchParams: PageProps<"/paiement/ret
       </p>
       <p className="font-mono text-xs text-muted">{t(lang, "pay.ref", { ref: order.id.slice(-8).toUpperCase() })}</p>
       <div className="mt-6 flex flex-col gap-3">
-        {order.status === "PAID" && order.work && (
+        {status === "PAID" && order.work && (
           <Link href={`/oeuvres/${order.work.slug}`} className="btn btn-primary">
             {t(lang, "pay.openWork")}
           </Link>
         )}
-        {order.status === "PAID" && order.plan && (
+        {status === "PAID" && order.plan && (
           <Link href="/documentaires" className="btn btn-primary">
             {t(lang, "pay.discoverDocs")}
           </Link>
         )}
-        {order.status === "FAILED" && (
+        {status === "FAILED" && (
           <Link href={order.work ? `/oeuvres/${order.work.slug}` : "/abonnement"} className="btn btn-primary">
             {t(lang, "pay.retry")}
           </Link>

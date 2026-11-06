@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
-import { PPM, feePpm, rates, splitSale, subscriptionRates } from "@/lib/commissions";
+import { PPM, effectiveFeePpm, feePpm, rates, splitSale, subscriptionRates } from "@/lib/commissions";
 import type { LedgerParty } from "@/generated/prisma/enums";
 
 /**
@@ -22,8 +22,12 @@ export type Beneficiary = {
   balance: number;
 };
 
-/** Écrit les commissions d'une commande payée, si elles manquent. Idempotent : appelable à volonté. */
-export async function ensureOrderAccounting(orderId: string): Promise<void> {
+/**
+ * Écrit les commissions d'une commande payée, si elles manquent. Idempotent : appelable à volonté.
+ * `actualFee` est le frais réel du prestataire ; une réconciliation ultérieure le relit sur la commande
+ * et ne le remplace surtout pas par l'estimation `CCC_FEE_PPM`.
+ */
+export async function ensureOrderAccounting(orderId: string, actualFee?: number): Promise<void> {
   const order = await db.order.findUnique({
     where: { id: orderId },
     select: {
@@ -32,13 +36,15 @@ export async function ensureOrderAccounting(orderId: string): Promise<void> {
       amount: true,
       currency: true,
       plan: true,
+      feeAmount: true,
       work: { select: { id: true, authorId: true, title: true } },
       user: { select: { parish: { select: { dioceseId: true } } } },
     },
   });
   if (!order || order.status !== "PAID") return;
 
-  const split = splitSale(order.amount, order.plan ? "SUBSCRIPTION" : "WORK");
+  const knownFee = actualFee ?? (order.feeAmount > 0 ? order.feeAmount : undefined);
+  const split = splitSale(order.amount, order.plan ? "SUBSCRIPTION" : "WORK", knownFee);
   const bar = order.plan ? subscriptionRates() : rates();
   const dioceseId = order.user.parish?.dioceseId ?? null;
   const authorId = order.work?.authorId ?? null;
@@ -51,7 +57,11 @@ export async function ensureOrderAccounting(orderId: string): Promise<void> {
 
   await db.order.update({
     where: { id: order.id },
-    data: { feePpm: feePpm(), feeAmount: split.fee, netAmount: split.net },
+    data: {
+      feePpm: knownFee === undefined ? feePpm() : effectiveFeePpm(order.amount, split.fee),
+      feeAmount: split.fee,
+      netAmount: split.net,
+    },
   });
 
   const common = { orderId: order.id, currency: order.currency };

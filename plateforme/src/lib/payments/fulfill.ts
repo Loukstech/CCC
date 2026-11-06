@@ -13,8 +13,10 @@ function addPeriod(from: Date, plan: "MONTHLY" | "YEARLY") {
  * Valide une commande payée. Peut être appelée plusieurs fois pour la même commande (le prestataire peut
  * confirmer deux fois) : seule la première passe de « en attente » à « payée » compte, donc aucun double effet.
  * Pour un abonnement, la période s'ajoute à la fin de l'abonnement en cours s'il y en a un.
+ * `actualFeeAmount` est le frais réellement prélevé par le prestataire : il remplace l'estimation
+ * configurée et devient la base du partage (frais déduits avant partage).
  */
-export async function markOrderPaid(orderId: string, providerRef?: string): Promise<boolean> {
+export async function markOrderPaid(orderId: string, providerRef?: string, actualFeeAmount?: number): Promise<boolean> {
   const paid = await db.$transaction(async (tx) => {
     const claimed = await tx.order.updateMany({
       where: { id: orderId, status: "PENDING" },
@@ -56,7 +58,7 @@ export async function markOrderPaid(orderId: string, providerRef?: string): Prom
 
   // Les commissions (lot 4) sont écrites juste après l'encaissement, de façon idempotente : si cette
   // étape échoue, la réconciliation de l'écran Finances les rattrape sans jamais payer deux fois.
-  if (paid) await ensureOrderAccounting(orderId).catch(() => undefined);
+  if (paid) await ensureOrderAccounting(orderId, actualFeeAmount).catch(() => undefined);
   return paid;
 }
 

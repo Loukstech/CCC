@@ -47,3 +47,6 @@ next-env.d.ts
 
 # fichiers privés des livres (jamais publiés)
 /storage
+
+# notes locales contenant des clés (ne jamais publier)
+*.local.md

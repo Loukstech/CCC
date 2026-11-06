@@ -8,19 +8,21 @@ import "server-only";
  * qui est entré en caisse (c'était le défaut du cahier des charges : 90 % + 10 % du brut, sans place
  * pour les frais).
  *
- * Barème proposé et appliqué par défaut, sur le net :
- *   - écrivain 70 % — il reste majoritaire, c'est ce que le client veut défendre ;
+ * Barème retenu pour cette version, sur le net :
+ *   - écrivain 80 % — le plus proche des 90 % demandés par le client tout en restant viable ;
  *   - diocèse  10 % — la part promise aux diocèses ;
- *   - plateforme 20 % — hébergement, vidéo, support, frais divers.
+ *   - plateforme 10 % — hébergement, vidéo, support ; c'est toujours le reste, jamais un réglage.
  *
  * Tout est réglable par variables d'environnement, sans redéploiement de code :
- *   CCC_FEE_PPM=200            frais du prestataire, 2 % du brut
- *   CCC_WRITER_PPM=7000        part écrivain (70 %)
+ *   CCC_FEE_PPM=200            estimation des frais (2 % du brut), seulement si le prestataire
+ *                              ne fournit pas ses frais réels
+ *   CCC_WRITER_PPM=8000        part écrivain (80 %)
  *   CCC_DIOCESE_PPM=1000       part diocèse (10 %)
- *   CCC_PLATFORM_PPM=2000      part plateforme (20 %)
  *   CCC_SUB_DIOCESE_PPM=1000   part diocèse sur un abonnement (10 %)
  *
  * Les taux sont exprimés en points de base (10 000 = 100 %) pour éviter les arrondis flottants.
+ * Avec un vrai prestataire, les frais varient selon le moyen de paiement : ils sont alors lus sur la
+ * transaction et transmis à `splitSale`, qui partage le net réellement reçu.
  */
 
 export const PPM = 10_000;
@@ -46,10 +48,10 @@ export function feePpm(): number {
 
 /** Barème d'une vente d'œuvre. La part plateforme absorbe l'arrondi et comble un éventuel manque. */
 export function rates(): RateSet {
-  const writerPpm = envPpm("CCC_WRITER_PPM", 7_000);
+  const writerPpm = envPpm("CCC_WRITER_PPM", 8_000);
   const diocesePpm = envPpm("CCC_DIOCESE_PPM", 1_000);
   // Une somme de parts supérieure à 100 % est refusée : on revient au barème par défaut.
-  if (writerPpm + diocesePpm > PPM) return { writerPpm: 7_000, diocesePpm: 1_000, platformPpm: 2_000 };
+  if (writerPpm + diocesePpm > PPM) return { writerPpm: 8_000, diocesePpm: 1_000, platformPpm: 1_000 };
   return { writerPpm, diocesePpm, platformPpm: PPM - writerPpm - diocesePpm };
 }
 
@@ -76,15 +78,26 @@ export type SaleKind = "WORK" | "SUBSCRIPTION";
 /**
  * Découpe un montant encaissé. La somme des parts vaut exactement le net : aucune commission ne peut
  * être payée avec de l'argent qui n'a pas été reçu.
+ *
+ * `actualFee` est le frais réellement prélevé par le prestataire (FedaPay le renvoie sur la transaction).
+ * Sans lui, on retombe sur l'estimation `CCC_FEE_PPM`, utilisée par le paiement de démonstration.
  */
-export function splitSale(gross: number, kind: SaleKind = "WORK"): Split {
+export function splitSale(gross: number, kind: SaleKind = "WORK", actualFee?: number): Split {
   const safeGross = Math.max(0, Math.round(gross));
-  const fee = Math.round((safeGross * feePpm()) / PPM);
+  const fee =
+    actualFee === undefined
+      ? Math.round((safeGross * feePpm()) / PPM)
+      : Math.min(safeGross, Math.max(0, Math.round(actualFee)));
   const net = safeGross - fee;
   const r = kind === "SUBSCRIPTION" ? subscriptionRates() : rates();
   const writer = Math.floor((net * r.writerPpm) / PPM);
   const diocese = Math.floor((net * r.diocesePpm) / PPM);
   return { gross: safeGross, fee, net, writer, diocese, platform: net - writer - diocese };
+}
+
+/** Taux effectif d'un frais réel, en ppm, pour tracer un pourcentage qui varie selon le moyen de paiement. */
+export function effectiveFeePpm(gross: number, fee: number): number {
+  return gross > 0 ? Math.round((Math.max(0, Math.round(fee)) * PPM) / gross) : 0;
 }
 
 /** Résumé lisible du barème, pour l'écran d'administration. */
