@@ -6,3 +6,6 @@ exemple/
 
 # Clés d'API (ne jamais publier)
 API USEFULL
+
+# Traces des tests navigateur (captures, snapshots, journaux de console)
+.playwright-cli/
