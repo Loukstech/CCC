@@ -29,6 +29,22 @@ réattribue les œuvres). Domaine `@ccc.example` : réservé, aucun email ne peu
 `/connexion` avec l'email et le mot de passe. Un administrateur diocésain est redirigé vers
 `/diocese` ; le super administrateur vers `/admin` ; un auteur peut ouvrir `/ecrivain`.
 
+## Inscriptions partenaires (lot 8)
+
+Depuis le 6 novembre 2026, un diocèse ou un écrivain **ne s'inscrit plus librement** : il lui faut un
+code de partenariat, remis après signature du contrat.
+
+- Émission : `/admin/partenariats` (super-administrateur). Le code s'affiche **une seule fois**.
+- Saisie : `/ecrivain/inscription` (écrivain) ou `/diocese/inscription` (diocèse).
+- Chaque code est **à usage unique** et valable 30 jours par défaut.
+- L'inscription d'un simple lecteur (`/inscription`) reste libre.
+
+Les codes de démonstration ne sont **pas** versionnés ici : ce dépôt est public, et les publier
+annulerait la protection qu'ils apportent. Ils sont conservés hors dépôt ; en cas de perte, il suffit
+d'en réémettre depuis `/admin/partenariats`.
+
+Voir [lot-8-partenariats-et-directs.md](./lot-8-partenariats-et-directs.md).
+
 ## Parcours de démonstration des lots 4 à 7
 
 1. **Achat** : connecté en `fidele.demo`, ouvrir une œuvre payante, « Acheter », puis « Payer »
@@ -44,6 +60,11 @@ réattribue les œuvres). Domaine `@ccc.example` : réservé, aucun email ne peu
    dans `/admin/manuscrits` et le passer « à l'étude », « accepté » ou « refusé ».
 
 ## Données déjà en base
+
+> **État au 6 novembre 2026** : la base de démonstration a été remise à zéro (aucune vente, aucun
+> abonnement, aucune commission). Les écrans `/admin/finances`, `/ecrivain` et `/diocese` sont donc
+> vides au départ, ce qui est normal. Les chiffres ci-dessous décrivent le jeu de données historique,
+> restaurable depuis une sauvegarde.
 
 4 ventes payées, 1 remboursée, un lot `VRS-2026-11-ECR-001` versé (référence `MM-DEMO-0001`) et un
 solde disponible. Les totaux sont réels : écrivains + diocèses + plateforme = net encaissé.

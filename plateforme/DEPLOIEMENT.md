@@ -31,6 +31,7 @@ un client, prenez l'offre **Pro** (environ 20 $ par mois, résiliable après la 
    | `DATABASE_URL` | adresse **directe** Neon |
    | `DATABASE_URL_POOLED` | adresse **pooler** Neon (celle qui contient `-pooler`) |
    | `SESSION_SECRET` | le nouveau secret de l'étape 2 |
+   | `PARTNER_CODE_REQUIRED` | `true` : un code de partenariat est exigé pour créer un compte diocèse ou écrivain. Absent ou `false` : inscriptions ouvertes. Voir « Codes de partenariat et directs ». |
 
 4. **Deploy.** La région des fonctions est déjà réglée sur Francfort (`vercel.json`), à côté de la base Neon.
 5. Ouvrir l'adresse fournie et dérouler le parcours de démonstration ci-dessous.
@@ -69,6 +70,11 @@ Si une poussée ne publie vraiment rien : tableau de bord Vercel → projet → 
    bloquée jusqu'à ce qu'on retire un appareil.
 9. **Droits par pays** : sur une fiche, choisir « États-Unis » : l'œuvre n'est plus disponible.
 10. **Administration** (compte administrateur) : « Gérer » une œuvre : droits par pays, prix par pays.
+11. **Partenariats** (compte administrateur) : « Partenariats » > émettre un code pour un diocèse ou un
+    écrivain. Le code s'affiche **une seule fois**. Le saisir ensuite sur `/diocese/inscription` ou
+    `/ecrivain/inscription` : le compte est créé et l'accès ouvert.
+12. **Direct** : « En direct » dans l'en-tête. L'événement de démonstration est *programmé* (aucun flux
+    n'est chargé). Pour un vrai direct, voir la section suivante.
 
 ## Ce qui ne fonctionne pas encore en ligne
 
@@ -79,7 +85,11 @@ Si une poussée ne publie vraiment rien : tableau de bord Vercel → projet → 
 - **Envoi de fichiers de livres** depuis l'administration : les fonctions Vercel n'ont pas de disque inscriptible.
   Les livres de démonstration sont inclus dans le déploiement ; pour de vrais livres, il faudra brancher un stockage
   (fonctions `readBookFile` et `saveBookFile` dans `src/lib/storage.ts`).
-- **Pas encore faits** : lecture hors connexion, lecteur vidéo, mot de passe oublié, double authentification du personnel.
+- **Pas encore faits** : lecture hors connexion, mot de passe oublié, double authentification du personnel.
+- **Directs** : la vidéo vient d'un prestataire externe (YouTube/Facebook/Vimeo ou Mux). Une fonction
+  Vercel ne peut pas recevoir un flux RTMP : elle sert la page, pas la vidéo.
+- **Codes de partenariat de démonstration** : ils sont valides 30 jours et doivent être révoqués avant
+  une vraie production (voir la section suivante).
 - **Sessions ouvertes avant la limite d'appareils** : un lecteur déjà connecté voit un bouton « Autoriser cet appareil »
   dans « Mon compte » (ou se reconnecte).
 - Le site est volontairement **non indexé** par les moteurs de recherche (`src/app/robots.ts` et `metadata.robots`).
@@ -96,6 +106,47 @@ Si une poussée ne publie vraiment rien : tableau de bord Vercel → projet → 
 
 Une clé qui se termine par `.mp4` reste une vidéo de démonstration : les deux types peuvent coexister.
 Ne collez jamais la clé privée dans un message ou un dépôt.
+
+## Codes de partenariat et directs
+
+Documentation complète : [`docs/lot-8-partenariats-et-directs.md`](docs/lot-8-partenariats-et-directs.md).
+
+### Codes de partenariat
+
+Un diocèse ou un écrivain ne s'inscrit plus librement : il signe un contrat, reçoit un code, et le
+saisit à l'inscription. L'inscription d'un simple lecteur reste libre.
+
+1. Se connecter en super-administrateur, ouvrir **`/admin/partenariats`**.
+2. Choisir le type (`Écrivain` ou `Diocèse`), le nom du partenaire, la référence du contrat et,
+   pour un diocèse, le diocèse concerné. Durée : 30 jours par défaut.
+3. **Copier le code immédiatement** : il n'est affiché qu'une fois. La base ne contient que son
+   empreinte, jamais le code lui-même.
+4. Le partenaire le saisit sur `/ecrivain/inscription` ou `/diocese/inscription`. Le code est
+   consommé une seule fois, dans la même transaction que la création du compte.
+
+Un code peut être **révoqué** tant qu'il n'a pas servi. Un auteur déjà existant peut être approuvé
+manuellement depuis la même page, sans code.
+
+**Activer ou désactiver le contrôle** : variable `PARTNER_CODE_REQUIRED` (`true` en production
+actuellement). Après changement, redéployer. Un code saisi reste vérifié même quand le contrôle est
+désactivé.
+
+> Changer `SESSION_SECRET` invalide tous les codes déjà émis, et toutes les sessions ouvertes.
+
+### Passer un direct en ligne
+
+1. **Créer le direct chez le prestataire** : YouTube Studio > « En direct » (récupérer l'URL
+   `https://www.youtube.com/embed/...`), ou un live Mux (noter le *Playback ID*).
+2. **`/admin/lives`** : programmez l'événement (titre, source, date UTC, visibilité), choisissez un
+   **diffuseur** et enregistrez.
+3. **Donner le badge** : un compte ne peut être désigné diffuseur que s'il porte le badge
+   « diffuseur approuvé ». Il s'attribue par e-mail, dans la même page.
+4. Le jour J, **passer le statut à `LIVE`** : la page `/live/<slug>` affiche le lecteur.
+5. À la fin, passer à `ENDED` et renseigner l'**URL du replay** si elle existe.
+
+Sources acceptées pour l'intégration : YouTube, Facebook, Vimeo, Dailymotion, Twitch (HTTPS
+uniquement, liste fermée pour empêcher l'injection d'une page arbitraire). Visibilité : tout public,
+membres connectés, ou abonnés.
 
 ## Quand ce sera pour de vrai
 
