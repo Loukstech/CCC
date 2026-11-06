@@ -155,7 +155,7 @@ export function Availability({ country, available, lang }: { country: string | n
           id="country"
           name="country"
           defaultValue={country ?? ""}
-          className="h-10 min-w-0 flex-1 rounded-lg border border-white/30 bg-white/10 px-3 text-base text-white backdrop-blur sm:text-sm [&>option]:text-ink"
+          className="h-10 min-w-0 flex-1 rounded-lg border border-white/30 bg-white/10 px-3 text-base text-white backdrop-blur sm:text-sm"
         >
           {!country && <option value="">{t(lang, "av.chooseMine")}</option>}
           {COUNTRIES.map((c) => (

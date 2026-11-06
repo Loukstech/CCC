@@ -69,6 +69,25 @@ html[data-theme="dark"] {
   }
 }
 
+/*
+ * Listes déroulantes natives : la popup d'options est dessinée par le navigateur, souvent sur un
+ * fond clair même quand <html> est en color-scheme dark. Les <option> héritent alors de --ink
+ * (quasi blanc en thème sombre) et deviennent illisibles. On fixe donc ici un couple
+ * fond clair / texte sombre, indépendant du thème, pour tous les sélecteurs du site.
+ * Aucune classe Tailwind ne doit recoller une couleur dépendante du thème sur les <option>.
+ */
+select {
+  color-scheme: light;
+}
+select option,
+select optgroup {
+  background-color: #ffffff;
+  color: #0b1220;
+}
+select option:disabled {
+  color: #5b6475;
+}
+
 body {
   background: var(--paper);
   color: var(--ink);
