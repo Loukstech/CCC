@@ -2,10 +2,10 @@
 
 > Suite de [etat-du-projet-2026-11-05.md](./etat-du-projet-2026-11-05.md), qui couvre les lots 1 à 7.
 >
-> **Dernière révision : 6 novembre, 22 h 30.** Le local, GitHub (`origin/main`) et le site en ligne
-> servent le même commit d'application (`0435956`) ; ce document et celui du lot 8 ne modifient que
-> la documentation. Base Neon à jour (`prisma migrate deploy` appliqué). Déploiement Vercel
-> automatique.
+> **Dernière révision : 6 novembre, 22 h 45.** Le local, GitHub (`origin/main`) et le site en ligne
+> servent le même commit d'application (`a4c17ef`) ; ce document ne modifie que la documentation.
+> Base Neon à jour (migrations `20261106210428_sous_titres` et `20261106221656_editions_reliees`
+> appliquées). Déploiement Vercel automatique.
 >
 > Ce document décrit **ce qui a été ajouté aujourd'hui**, l'**état de la base**, ce qui **reste à
 > faire** et les **décisions qui vous attendent**.
@@ -18,6 +18,7 @@
 | 8 | **Codes de partenariat** (diocèses et écrivains) et **événements en direct** | **Livré, en ligne, vérifié** |
 | — | **Deux livres du client** importés, lecture à voix haute testée | **Livré, en ligne** |
 | — | **Sous-titres** des films et documentaires (WebVTT, FR/EN) | **Livré, en ligne, vérifié** |
+| — | **Éditions reliées** : un même titre en plusieurs langues | **Livré, en ligne, vérifié** |
 
 Le détail du lot 8 est dans [lot-8-partenariats-et-directs.md](./lot-8-partenariats-et-directs.md).
 
@@ -118,3 +119,40 @@ Ce qui reste :
 | Sous-titres sur Mux | La même balise `<track>` fonctionne sur un flux HLS. On peut soit déposer le `.vtt` dans `public/subtitles`, soit créer une piste texte chez Mux (API `tracks`) pour qu'elle soit servie avec le manifeste. |
 | Choix de langue mémorisé | Aujourd'hui le choix vaut pour la séance en cours. On peut le retenir par compte, comme la vitesse. |
 | Sous-titres sur les directs | Non couvert : le lot 8 diffuse en direct, sans piste texte. |
+
+## 8. Éditions reliées : un même titre en plusieurs langues
+
+Livré et vérifié en ligne (commit `a4c17ef`). Répond à la question « faut-il traduire
+automatiquement, ou ajouter chaque langue comme un livre séparé ? ».
+
+**Le choix retenu : chaque langue reste une fiche complète, et les fiches sont reliées entre elles.**
+
+Pourquoi pas une seule fiche traduite à la volée : le prix, la licence par pays, la part de 80 % de
+l'écrivain et la position de lecture sont attachés à la fiche, pas au titre. Une traduction calculée à
+l'affichage casserait la reprise de lecture (elle est enregistrée en CFI, une adresse interne au
+fichier EPUB) et la lecture à voix haute (la voix est choisie d'après la langue déclarée du livre).
+
+- **Modèle** : `Work.translationGroupId` (identifiant commun, vide si l'œuvre n'a pas de traduction)
+  et `Work.translationPrimary` (l'édition de référence, celle que les listes affichent). Migration
+  `20261106221656_editions_reliees`, appliquée, avec index sur `translationGroupId`.
+- **Administration** (fiche d'une œuvre, section « Autres langues du même titre ») : relier une fiche
+  à une autre du même type, détacher, et désigner l'édition de référence. Chaque geste est journalisé
+  (`AuditLog` : `work.translation.link`, `work.translation.unlink`, `work.translation.primary`).
+- **Catalogue et recherche** : une seule fiche par titre (`translationPrimary`). Les autres éditions
+  restent accessibles par leur adresse directe et par le sélecteur de la fiche.
+- **Fiche publique** : une rangée « Aussi disponible en » avec le nom **natif** de chaque langue
+  (`src/lib/languages.ts` : English, Português, Yorùbá…), pas une clé de traduction par langue.
+- **Détachement** : si le groupe perd son édition de référence, la plus ancienne fiche restante est
+  promue automatiquement — un groupe ne reste jamais sans référence.
+
+Vérifié en production : liaison de deux livres depuis `/admin/oeuvres/[id]`, apparition de la rangée
+« Aussi disponible en Français », disparition de la seconde fiche de `/livres`, puis détachement et
+retour à l'état initial. Les données de démonstration ont été remises à zéro (aucun groupe).
+
+Ce qui reste :
+
+| Sujet | Pourquoi |
+|---|---|
+| Traduire réellement les textes | La liaison ne traduit rien : elle regroupe. Il faut produire l'EPUB dans chaque langue (traduction hors ligne, glossaire liturgique, relecture humaine — la traduction automatique est faible en fon, yoruba et nagot). |
+| Sélecteur de langue sur la page de lecture | Aujourd'hui le sélecteur est sur la fiche ; on peut aussi le mettre dans le lecteur, pour changer d'édition sans revenir en arrière. |
+| Fusion de groupes | Deux groupes distincts ne se fusionnent pas : il faut détacher avant de relier. Suffisant pour la démonstration, à revoir si le catalogue grandit. |
