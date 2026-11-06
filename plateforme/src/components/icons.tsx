@@ -100,3 +100,11 @@ export const HomeIcon =({ className = "size-6" }: P) => (
     <path d="m3.5 11 8.5-7 8.5 7M6 9.5V20h12V9.5" />
   </svg>
 );
+
+/** Antenne de diffusion : événements en direct (lot 8). */
+export const LiveIcon = ({ className = "size-6" }: P) => (
+  <svg {...base} className={className}>
+    <circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none" />
+    <path d="M7.8 7.8a5.9 5.9 0 0 0 0 8.4M16.2 7.8a5.9 5.9 0 0 1 0 8.4M4.9 4.9a10 10 0 0 0 0 14.2M19.1 4.9a10 10 0 0 1 0 14.2" />
+  </svg>
+);

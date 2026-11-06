@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookIcon, FilmIcon, GlobeIcon, HomeIcon, SearchIcon } from "@/components/icons";
+import { BookIcon, FilmIcon, GlobeIcon, HomeIcon, LiveIcon, SearchIcon } from "@/components/icons";
 import { t, type Key, type Lang } from "@/lib/i18n";
 
 const TABS: { href: string; label: Key; icon: typeof HomeIcon }[] = [
@@ -10,6 +10,7 @@ const TABS: { href: string; label: Key; icon: typeof HomeIcon }[] = [
   { href: "/livres", label: "nav.books", icon: BookIcon },
   { href: "/documentaires", label: "nav.docs", icon: GlobeIcon },
   { href: "/films", label: "nav.films", icon: FilmIcon },
+  { href: "/live", label: "nav.live", icon: LiveIcon },
   { href: "/recherche", label: "nav.search", icon: SearchIcon },
 ];
 
@@ -21,7 +22,7 @@ export function BottomNav({ lang }: { lang: Lang }) {
       aria-label={t(lang, "nav.main")}
       className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-paper/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg md:hidden"
     >
-      <ul className="grid grid-cols-5">
+      <ul className="grid grid-cols-6">
         {TABS.map(({ href, label, icon: Icon }) => {
           const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
           return (

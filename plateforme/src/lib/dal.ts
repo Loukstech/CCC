@@ -125,3 +125,9 @@ export const FINANCE_ROLES: StaffRole[] = ["SUPER_ADMIN", "FINANCE"];
 
 /** Dépôt de manuscrits : comité éditorial (lot 7). */
 export const EDITORIAL_ROLES: StaffRole[] = ["SUPER_ADMIN", "EDITOR"];
+
+/** Émission des codes de partenariat et validation des auteurs (lot 8) : super-administrateur uniquement. */
+export const PARTNER_ROLES: StaffRole[] = ["SUPER_ADMIN"];
+
+/** Événements en direct et badges de diffuseur (lot 8). */
+export const LIVE_ROLES: StaffRole[] = ["SUPER_ADMIN", "EDITOR"];

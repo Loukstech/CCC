@@ -48,6 +48,16 @@ async function SignupContent() {
           <Link href="/connexion" className="font-semibold text-brand underline-offset-4 hover:underline">
             {t(lang, "auth.login")}
           </Link>
+          <span className="mt-4 block border-t border-line pt-3 text-xs leading-relaxed">
+            {t(lang, "part.partnerQuestion")}{" "}
+            <Link href="/ecrivain/inscription" className="font-semibold text-brand underline-offset-4 hover:underline">
+              {t(lang, "part.writerLink")}
+            </Link>
+            {" · "}
+            <Link href="/diocese/inscription" className="font-semibold text-brand underline-offset-4 hover:underline">
+              {t(lang, "part.dioceseLink")}
+            </Link>
+          </span>
         </>
       }
     >

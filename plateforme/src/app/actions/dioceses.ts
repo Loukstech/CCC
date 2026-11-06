@@ -7,6 +7,13 @@ import { keep, type FormState } from "@/lib/form";
 import { t } from "@/lib/i18n";
 import { getLang } from "@/lib/lang";
 import { hashPassword } from "@/lib/password";
+import {
+  claimableWhere,
+  codeError,
+  inspectCode,
+  normalizeCode,
+  partnerCodesRequired,
+} from "@/lib/partner-codes";
 import { randomBytes } from "node:crypto";
 
 const slugify = (s: string) =>
@@ -122,6 +129,8 @@ export async function registerDioceseAccount(_: FormState, formData: FormData): 
   const dioceseId = values.dioceseId;
   const password = String(formData.get("password") ?? "");
   const passwordConfirm = String(formData.get("passwordConfirm") ?? "");
+  // Jamais renvoyé dans `values` : un code ne doit pas être réaffiché dans le formulaire.
+  const partnerCode = normalizeCode(String(formData.get("partnerCode") ?? ""));
 
   if (name.length < 2) return { error: t(lang, "err.name"), values };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: t(lang, "err.email"), values };
@@ -129,36 +138,65 @@ export async function registerDioceseAccount(_: FormState, formData: FormData): 
   if (password !== passwordConfirm) return { error: t(lang, "err.pwMismatch"), values };
   if (!dioceseId) return { error: t(lang, "dio.errDiocese"), values };
 
+  // Lot 8 : un code de partenariat signé remplace l'auto-inscription libre. Le contrôle est
+  // activé par PARTNER_CODE_REQUIRED ; un code saisi est toujours vérifié, même si le flag est off.
+  const gated = partnerCodesRequired();
+  let code: Awaited<ReturnType<typeof inspectCode>> = { ok: false, reason: "invalid" };
+  if (gated || partnerCode) {
+    code = await inspectCode(partnerCode, "DIOCESE", dioceseId);
+    if (!code.ok) return { error: codeError(lang, code.reason), values };
+  }
+
   const diocese = await db.diocese.findFirst({
     where: { id: dioceseId, active: true },
     select: { id: true, name: true, admins: { where: { role: "ADMIN" }, select: { userId: true }, take: 1 } },
   });
   if (!diocese) return { error: t(lang, "dio.errDiocese"), values };
-  if (diocese.admins.length > 0) return { error: t(lang, "dio.errTaken"), values };
+  // Sans code, on garde la protection anti-usurpation. Avec un code valide (preuve du contrat),
+  // l'administration peut ajouter un second responsable au même diocèse.
+  if (diocese.admins.length > 0 && !code.ok) return { error: t(lang, "dio.errTaken"), values };
 
   const exists = await db.user.findUnique({ where: { email }, select: { id: true } });
   if (exists) return { error: t(lang, "err.exists"), values };
 
-  await db.$transaction(async (tx) => {
-    const created = await tx.user.create({
-      data: {
-        email,
-        name,
-        passwordHash: await hashPassword(password),
-        locale: lang,
-        dioceseAdmins: { create: { dioceseId: diocese.id, role: "ADMIN" } },
-      },
-      select: { id: true },
+  try {
+    await db.$transaction(async (tx) => {
+      if (code.ok) {
+        const claim = await tx.partnerCode.updateMany({
+          where: claimableWhere(partnerCode, "DIOCESE", diocese.id),
+          data: { usedAt: new Date() },
+        });
+        if (claim.count !== 1) throw new Error("CODE_CLAIM_FAILED");
+      }
+      const created = await tx.user.create({
+        data: {
+          email,
+          name,
+          passwordHash: await hashPassword(password),
+          locale: lang,
+          dioceseAdmins: { create: { dioceseId: diocese.id, role: "ADMIN" } },
+        },
+        select: { id: true },
+      });
+      if (code.ok) {
+        await tx.partnerCode.update({ where: { id: code.id }, data: { usedByUserId: created.id } });
+      }
+      await tx.auditLog.create({
+        data: {
+          actorId: created.id,
+          action: "dioceseAdmin.selfRegister",
+          target: created.id,
+          details: { email, name, dioceseId: diocese.id, partnerCode: code.ok ? code.id : null },
+        },
+      });
     });
-    await tx.auditLog.create({
-      data: {
-        actorId: created.id,
-        action: "dioceseAdmin.selfRegister",
-        target: created.id,
-        details: { email, name, dioceseId: diocese.id },
-      },
-    });
-  });
+  } catch (e) {
+    // Transaction annulée : le code n'est pas consumé, le compte n'est pas créé.
+    if (e instanceof Error && e.message === "CODE_CLAIM_FAILED") {
+      return { error: codeError(lang, "used"), values };
+    }
+    throw e;
+  }
 
   refresh();
   return { notice: t(lang, "dio.created", { diocese: diocese.name }) };

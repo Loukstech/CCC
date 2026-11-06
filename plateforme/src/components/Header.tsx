@@ -20,6 +20,7 @@ const NAV: { href: string; label: Key }[] = [
   { href: "/livres", label: "nav.books" },
   { href: "/documentaires", label: "nav.docs" },
   { href: "/films", label: "nav.films" },
+  { href: "/live", label: "nav.live" },
 ];
 
 async function UserNav({ lang }: { lang: Lang }) {

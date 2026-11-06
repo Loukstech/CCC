@@ -99,6 +99,12 @@ model User {
   /// Écritures de commission dont ce compte est le bénéficiaire (écrivain).
   ledgerEntries CommissionEntry[] @relation("LedgerUser")
   payoutItems   PayoutItem[] @relation("PayoutUser")
+
+  partnerCodesUsed    PartnerCode[]     @relation("PartnerCodeUsedBy")
+  partnerCodesCreated PartnerCode[]     @relation("PartnerCodeCreatedBy")
+  liveBadge           LiveBroadcaster?  @relation("LiveBadgeOwner")
+  liveBadgesGranted   LiveBroadcaster[] @relation("LiveBadgeGrantedBy")
+  liveEventsCreated   LiveEvent[]       @relation("LiveEventCreatedBy")
 }
 
 // Référentiel : un diocèse (par pays) regroupe des paroisses. Aucune paroisse n'est supprimée (voir mergedIntoId).
@@ -112,6 +118,7 @@ model Diocese {
 
   parishes Parish[]
   admins   DioceseAdmin[]
+  partnerCodes PartnerCode[]
   /// Part de revenus revenant à ce diocèse (lot 4).
   ledgerEntries CommissionEntry[] @relation("LedgerDiocese")
   payoutItems   PayoutItem[] @relation("PayoutDiocese")
@@ -582,4 +589,90 @@ model Report {
 
   @@unique([targetType, targetId, reporterId])
   @@index([status, createdAt])
+}
+
+// ---- Lot 8 : codes de partenariat et événements en direct ------------------------------------
+
+enum PartnerKind {
+  WRITER
+  DIOCESE
+}
+
+enum LiveProvider {
+  EMBED
+  MUX
+}
+
+enum LiveStatus {
+  DRAFT
+  SCHEDULED
+  LIVE
+  ENDED
+  ARCHIVED
+}
+
+enum LiveVisibility {
+  PUBLIC
+  AUTHENTICATED
+  SUBSCRIBERS
+}
+
+/// Code remis au partenaire après signature du contrat. Le code en clair n'est JAMAIS stocké :
+/// seul un HMAC-SHA256 (clé = SESSION_SECRET) est conservé, ce qui permet de le retrouver et
+/// de le vérifier sans pouvoir le reconstituer depuis la base.
+model PartnerCode {
+  id           String      @id @default(cuid())
+  codeHash     String      @unique
+  label        String
+  kind         PartnerKind
+  contractRef  String?
+  dioceseId    String?
+  diocese      Diocese?    @relation(fields: [dioceseId], references: [id], onDelete: SetNull)
+  expiresAt    DateTime
+  usedAt       DateTime?
+  usedByUserId String?
+  usedBy       User?       @relation("PartnerCodeUsedBy", fields: [usedByUserId], references: [id], onDelete: SetNull)
+  createdById  String?
+  createdBy    User?       @relation("PartnerCodeCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  revokedAt    DateTime?
+  createdAt    DateTime    @default(now())
+
+  @@index([kind, usedAt])
+}
+
+/// Badge délivré par l'administration : seul un porteur actif peut être désigné diffuseur d'un live.
+model LiveBroadcaster {
+  userId      String    @id
+  user        User      @relation("LiveBadgeOwner", fields: [userId], references: [id], onDelete: Cascade)
+  grantedById String?
+  grantedBy   User?     @relation("LiveBadgeGrantedBy", fields: [grantedById], references: [id], onDelete: SetNull)
+  note        String?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  events LiveEvent[] @relation("LiveBroadcasterEvents")
+}
+
+/// Événement diffusé en direct. Le flux lui-même vient d'un prestataire externe (embed ou Mux HLS).
+model LiveEvent {
+  id            String         @id @default(cuid())
+  slug          String         @unique
+  title         String
+  description   String?
+  provider      LiveProvider   @default(EMBED)
+  embedUrl      String?
+  playbackId    String?
+  replayUrl     String?
+  status        LiveStatus     @default(DRAFT)
+  visibility    LiveVisibility @default(PUBLIC)
+  startsAt      DateTime
+  endsAt        DateTime?
+  broadcasterId String?
+  broadcaster   LiveBroadcaster? @relation("LiveBroadcasterEvents", fields: [broadcasterId], references: [userId], onDelete: SetNull)
+  createdById   String?
+  createdBy     User?          @relation("LiveEventCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([status, startsAt])
 }

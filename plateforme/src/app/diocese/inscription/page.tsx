@@ -7,6 +7,7 @@ import { registerDioceseAccount } from "@/app/actions/dioceses";
 import { db } from "@/lib/db";
 import { t } from "@/lib/i18n";
 import { getLang } from "@/lib/lang";
+import { partnerCodesRequired } from "@/lib/partner-codes";
 
 export const metadata = { title: "Accès diocèse — CCC" };
 
@@ -20,6 +21,7 @@ export default function DioceseSignupPage() {
 
 async function DioceseSignupContent() {
   const lang = await getLang();
+  const gated = partnerCodesRequired();
   const dioceses = await db.diocese.findMany({
     where: { active: true },
     orderBy: [{ country: "asc" }, { name: "asc" }],
@@ -44,6 +46,9 @@ async function DioceseSignupContent() {
         <p className="text-sm text-muted">{t(lang, "dio.empty")}</p>
       ) : (
         <ActionForm action={registerDioceseAccount} lang={lang} submitLabel={t(lang, "dio.submit")}>
+          <p className="rounded-xl bg-gold-soft/50 p-3 text-xs leading-relaxed text-muted ring-1 ring-line">
+            {t(lang, gated ? "part.codeRequiredNote" : "part.codeDemoNote")}
+          </p>
           <SelectField
             label={t(lang, "dio.diocese")}
             name="dioceseId"
@@ -53,6 +58,12 @@ async function DioceseSignupContent() {
           <Field label={t(lang, "auth.email")} name="email" type="email" />
           <Field label={t(lang, "auth.password")} name="password" type="password" />
           <Field label={t(lang, "auth.passwordConfirm")} name="passwordConfirm" type="password" />
+          <Field
+            label={t(lang, "part.code")}
+            name="partnerCode"
+            required={gated}
+            hint={t(lang, gated ? "part.codeHintRequired" : "part.codeHintDemo")}
+          />
         </ActionForm>
       )}
     </AuthShell>

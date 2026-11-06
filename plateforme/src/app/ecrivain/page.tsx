@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { ActionForm, Field, TextAreaField, SelectField } from "@/components/ActionForm";
-import { getCurrentUser } from "@/lib/dal";
+import { requireWriterAccess } from "@/lib/writer-access";
 import { db } from "@/lib/db";
 import { formatMoney } from "@/lib/currency";
 import { balanceOf, statement } from "@/lib/ledger";
@@ -30,8 +29,9 @@ export default function WriterPage() {
 }
 
 async function Writer() {
-  const user = await getCurrentUser();
-  if (!user) redirect("/connexion");
+  // Lot 8 : quand PARTNER_CODE_REQUIRED=true, seul un profil d'auteur APPROUVÉ (code de
+  // partenariat consommé ou validation en back-office) peut ouvrir l'espace écrivain.
+  const user = await requireWriterAccess();
   const lang = await getLang();
 
   const [profile, works, balance, ledger, manuscripts, reviews] = await Promise.all([
