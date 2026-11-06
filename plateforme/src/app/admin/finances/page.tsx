@@ -92,6 +92,9 @@ async function Finances({ searchParams }: { searchParams: PageProps<"/admin/fina
 
   const rates = rateSummary();
   const pct = (ppm: number) => `${(ppm / 100).toFixed(ppm % 100 === 0 ? 0 : 1)} %`;
+  // Avec FedaPay, les frais réels sont enregistrés commande par commande : le pourcentage
+  // CCC_FEE_PPM n'est alors qu'une estimation de repli, il ne doit pas être présenté comme le barème.
+  const realFees = (process.env.PAYMENT_PROVIDER ?? "demo") === "fedapay";
   const monthValue = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
   const partyLabel = (party: "WRITER" | "DIOCESE" | "PLATFORM") =>
     party === "DIOCESE" ? t(lang, "fin.party.DIOCESE") : party === "WRITER" ? t(lang, "fin.party.WRITER") : t(lang, "fin.platformPart");
@@ -119,7 +122,9 @@ async function Finances({ searchParams }: { searchParams: PageProps<"/admin/fina
       <section className={`${fine} flex flex-col gap-4`}>
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h2 className={h2}>{t(lang, "fin.rates")}</h2>
-          <span className="text-xs text-muted">{t(lang, "fin.fee")} : {pct(rates.feePpm)}</span>
+          <span className="text-xs text-muted">
+            {t(lang, "fin.fee")} : {realFees ? t(lang, "fin.feeReal") : `${pct(rates.feePpm)} · ${t(lang, "fin.feeEstimate")}`}
+          </span>
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
           {stat(t(lang, "fin.writerPart"), pct(rates.sale.writerPpm))}

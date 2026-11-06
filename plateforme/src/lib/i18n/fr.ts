@@ -692,6 +692,8 @@ export const fr = {
     "Chaque vente encaissée produit trois écritures : la part de l’écrivain, celle du diocèse de l’acheteur et celle de la plateforme. Les frais du prestataire sont déduits avant le partage. Le registre ne s’efface jamais : un remboursement ajoute une contre-écriture.",
   "fin.rates": "Barème en vigueur",
   "fin.fee": "Frais du prestataire",
+  "fin.feeReal": "frais réels constatés sur chaque commande (FedaPay)",
+  "fin.feeEstimate": "estimation, paiement démo",
   "fin.writerPart": "Part écrivain",
   "fin.diocesePart": "Part diocèse",
   "fin.platformPart": "Part plateforme",

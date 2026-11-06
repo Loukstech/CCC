@@ -149,8 +149,14 @@ export async function getFedaPayTransaction(providerRef: string): Promise<FedaPa
  *
  * `amount_transferred` est le montant qui arrive sur le compte FedaPay : `amount - transferred` est donc
  * la perte réelle, quel que soit le moyen de paiement. À défaut, on additionne `fees` et
- * `fixed_commission` (le champ `commission` semble inclus dans `fees` : à confirmer sur une transaction
- * sandbox réelle avant d'activer le live, pour ne pas compter deux fois).
+ * `fixed_commission` (le champ `commission` est un *taux*, ex. `"0.04"`, déjà inclus dans `fees` :
+ * ne jamais l'ajouter une seconde fois).
+ *
+ * Mesuré en sandbox le 06/11/2026 sur une transaction `momo_test` approuvée (2 000 FCFA) :
+ * `amount_debited = 2 083`, `fees = 83`, `amount_transferred = 2 000`. Les frais sont donc **ajoutés
+ * au montant payé par le client**, pas prélevés sur la recette marchande : la fonction renvoie 0 et le
+ * partage se fait sur 2 000 FCFA nets. Si en live le prestataire prélève plutôt les frais sur le
+ * montant transféré, la même formule les déduira automatiquement.
  */
 export function merchantFee(tx: FedaPayTransaction): number | undefined {
   const amount = Number(tx.amount);

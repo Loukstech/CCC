@@ -694,6 +694,8 @@ export const en: Record<Key, string> = {
     "Every settled sale produces three entries: the writer share, the buyer diocese share and the platform share. Provider fees are deducted before the split. The ledger is never erased: a refund adds a reversing entry.",
   "fin.rates": "Current rate card",
   "fin.fee": "Provider fee",
+  "fin.feeReal": "actual fees recorded per order (FedaPay)",
+  "fin.feeEstimate": "estimate, demo payment",
   "fin.writerPart": "Writer share",
   "fin.diocesePart": "Diocese share",
   "fin.platformPart": "Platform share",
