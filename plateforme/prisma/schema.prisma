@@ -519,6 +519,7 @@ enum AdPlacement {
   CATALOG // bandeau des pages Livres, Documentaires et Films
   WORK // bandeau de la fiche d'une œuvre
   STICKY // bandeau fixe en bas de l'écran, que l'on peut fermer
+  INTERSTITIAL // plein écran, pendant la lecture ou le visionnage d'un contenu gratuit
 }
 
 model Ad {
@@ -533,9 +534,27 @@ model Ad {
   startsAt   DateTime?
   endsAt     DateTime?
   clicks     Int         @default(0)
+  /// Nombre de fois où la publicité a été affichée. Un même visiteur n'est compté qu'une fois par séance.
+  impressions Int        @default(0)
   createdAt  DateTime    @default(now())
 
+  stats AdDailyStat[]
+
   @@index([placement, active])
+}
+
+/// Statistiques jour par jour, pour facturer un annonceur au mois sans garder une ligne par affichage.
+model AdDailyStat {
+  id          String   @id @default(cuid())
+  adId        String
+  ad          Ad       @relation(fields: [adId], references: [id], onDelete: Cascade)
+  /// Jour calendaire en UTC (heure serveur), pas l'horodatage de l'affichage.
+  day         DateTime @db.Date
+  impressions Int      @default(0)
+  clicks      Int      @default(0)
+
+  @@unique([adId, day])
+  @@index([day])
 }
 
 // Journal d'audit (sections 4.3 et 16)

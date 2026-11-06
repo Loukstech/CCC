@@ -8,7 +8,7 @@ import { keep, type FormState } from "@/lib/form";
 import { t } from "@/lib/i18n";
 import { getLang } from "@/lib/lang";
 
-const PLACEMENTS = ["HOME", "CATALOG", "WORK", "STICKY"] as const;
+const PLACEMENTS = ["HOME", "CATALOG", "WORK", "STICKY", "INTERSTITIAL"] as const;
 
 const isHttpUrl = (v: string) => {
   try {

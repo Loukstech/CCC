@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-label="Radio">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2b1145"/>
+      <stop offset="1" stop-color="#6d3fa8"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="675" fill="url(#g)"/>
+  <g fill="none" stroke="#ffffff" stroke-opacity="0.9" stroke-width="14" stroke-linecap="round">
+    <circle cx="600" cy="360" r="40"/>
+    <path d="M520 280a113 113 0 000 160"/>
+    <path d="M680 280a113 113 0 010 160"/>
+    <path d="M460 220a190 190 0 000 280"/>
+    <path d="M740 220a190 190 0 010 280"/>
+  </g>
+  <g fill="#ffffff" fill-opacity="0.35">
+    <rect x="80" y="560" width="1040" height="6" rx="3"/>
+  </g>
+</svg>

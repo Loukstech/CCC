@@ -9,3 +9,6 @@ API USEFULL
 
 # Traces des tests navigateur (captures, snapshots, journaux de console)
 .playwright-cli/
+
+# Captures de contrôle (générées pendant les tests, pas des livrables)
+assetes/captures/

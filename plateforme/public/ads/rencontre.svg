@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-label="Rencontre">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07333a"/>
+      <stop offset="1" stop-color="#0f8b8d"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="675" fill="url(#g)"/>
+  <g fill="none" stroke="#ffffff" stroke-opacity="0.9" stroke-width="14" stroke-linecap="round">
+    <circle cx="450" cy="300" r="46"/>
+    <path d="M370 470c0-44 36-80 80-80s80 36 80 80"/>
+    <circle cx="750" cy="300" r="46"/>
+    <path d="M670 470c0-44 36-80 80-80s80 36 80 80"/>
+    <circle cx="600" cy="250" r="56"/>
+    <path d="M505 460c0-52 43-95 95-95s95 43 95 95"/>
+  </g>
+  <g fill="#ffffff" fill-opacity="0.35">
+    <rect x="80" y="560" width="1040" height="6" rx="3"/>
+  </g>
+</svg>

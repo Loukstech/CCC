@@ -134,7 +134,20 @@ async function Manage({
       <section className={card}>
         <h2 className={h2}>{t(lang, "wk.editions")}</h2>
         <p className="mt-1 text-sm text-muted">{t(lang, "wk.editionsHint")}</p>
-        <ul className="mt-3 divide-y divide-line">
+
+        {/* Mode d'emploi en trois gestes : le client n'a pas à deviner ce que fait « relier ». */}
+        <ol className="mt-3 flex flex-col gap-1.5 rounded-xl bg-brand/5 px-4 py-3 text-sm text-ink/90">
+          {(["wk.editionsStep1", "wk.editionsStep2", "wk.editionsStep3"] as const).map((key, i) => (
+            <li key={key} className="flex gap-2.5">
+              <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-brand text-[11px] font-bold text-white">
+                {i + 1}
+              </span>
+              <span>{t(lang, key)}</span>
+            </li>
+          ))}
+        </ol>
+
+        <ul className="mt-4 divide-y divide-line">
           {editions.length === 0 && <li className="py-2 text-sm text-muted">{t(lang, "wk.editionsNone")}</li>}
           {editions.map((edition) => (
             <li key={edition.id} className="flex items-start justify-between gap-3 py-2 text-sm">
@@ -174,17 +187,22 @@ async function Manage({
             </li>
           ))}
         </ul>
-        {canCatalog && candidates.length > 0 && (
+        {editions.length > 1 && <p className="mt-1 text-xs text-muted">{t(lang, "wk.editionPrimaryHint")}</p>}
+        {canCatalog && (
           <div className="mt-4 border-t border-line pt-4">
             <p className="mb-2 text-sm font-medium text-ink">{t(lang, "wk.editionLink")}</p>
-            <ActionForm action={linkTranslation} submitLabel={t(lang, "wk.editionLinkSubmit")} lang={lang}>
-              <input type="hidden" name="workId" value={work.id} />
-              <SelectField
-                label={t(lang, "wk.editionPick")}
-                name="otherId"
-                options={candidates.map((c) => ({ value: c.id, label: `${c.title} (${c.language.toUpperCase()})` }))}
-              />
-            </ActionForm>
+            {candidates.length === 0 ? (
+              <p className="text-sm text-muted">{t(lang, "wk.editionNoCandidate")}</p>
+            ) : (
+              <ActionForm action={linkTranslation} submitLabel={t(lang, "wk.editionLinkSubmit")} lang={lang}>
+                <input type="hidden" name="workId" value={work.id} />
+                <SelectField
+                  label={t(lang, "wk.editionPick")}
+                  name="otherId"
+                  options={candidates.map((c) => ({ value: c.id, label: `${c.title} (${c.language.toUpperCase()})` }))}
+                />
+              </ActionForm>
+            )}
           </div>
         )}
       </section>

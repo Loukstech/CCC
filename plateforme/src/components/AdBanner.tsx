@@ -42,6 +42,26 @@ export function AdBanner({ ads, lang, variant = "banner" }: { ads: AdItem[]; lan
   }, [ads.length, variant]);
 
   const ad = ads[index] ?? ads[0];
+
+  // Comptage de l'affichage : une seule fois par publicité et par séance, pour qu'un visiteur qui
+  // navigue ne gonfle pas le compteur de l'annonceur. L'appel part en arrière-plan.
+  useEffect(() => {
+    if (!ad || closed) return;
+    const key = `ccc-ad-seen-${ad.id}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+    } catch {
+      /* sans stockage : on compte, quitte à compter deux fois dans la même visite */
+    }
+    const url = `/api/ads/${ad.id}/impression`;
+    if (typeof navigator.sendBeacon === "function") {
+      navigator.sendBeacon(url);
+    } else {
+      void fetch(url, { method: "POST", keepalive: true }).catch(() => null);
+    }
+  }, [ad, closed]);
+
   if (!ad || closed) return null;
 
   const body = (

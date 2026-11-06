@@ -1,6 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
+import { AdInterstitial } from "@/components/AdInterstitial";
 import { EpubReader } from "@/components/EpubReader";
+import { getAds } from "@/lib/ads";
 import { getCurrentUser } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { authorizeRead } from "@/lib/reading";
@@ -36,15 +38,25 @@ async function Reader({ params }: { params: PageProps<"/lire/[slug]">["params"] 
     select: { locator: true, position: true },
   });
 
+  // Publicité intercalée pour les livres gratuits : une minute de lecture, puis retour au texte.
+  const breakAds = access.work.access === "FREE" ? await getAds("INTERSTITIAL") : [];
+  const fallbackAds = breakAds.length === 0 && access.work.access === "FREE" ? await getAds("WORK") : [];
+  const ads = breakAds.length > 0 ? breakAds : fallbackAds;
+
   return (
-    <EpubReader
-      workId={access.work.id}
-      slug={access.work.slug}
-      title={access.work.title}
-      lang={lang}
-      bookLanguage={access.work.language}
-      initialLocator={progress?.locator ?? null}
-      initialPercent={Math.round(progress?.position ?? 0)}
-    />
+    <>
+      <EpubReader
+        workId={access.work.id}
+        slug={access.work.slug}
+        title={access.work.title}
+        lang={lang}
+        bookLanguage={access.work.language}
+        initialLocator={progress?.locator ?? null}
+        initialPercent={Math.round(progress?.position ?? 0)}
+      />
+      {ads.length > 0 && (
+        <AdInterstitial ads={ads} lang={lang} workId={access.work.id} mode="reading" delayMs={60_000} />
+      )}
+    </>
   );
 }

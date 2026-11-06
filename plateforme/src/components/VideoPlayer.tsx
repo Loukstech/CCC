@@ -99,6 +99,36 @@ export function VideoPlayer({
     };
   }, [save]);
 
+  // Publicité intercalée : elle met le film en pause et le reprend seulement s'il était en lecture.
+  // Le dialogue passe par des événements de fenêtre : le lecteur n'a pas à connaître la publicité.
+  useEffect(() => {
+    const v = video.current;
+    if (!v) return;
+    let wasPlaying = false;
+
+    const onPlay = () => window.dispatchEvent(new Event("ccc:video-playing"));
+    const onPause = () => window.dispatchEvent(new Event("ccc:video-paused"));
+    const onAdOpen = () => {
+      wasPlaying = !v.paused && !v.ended;
+      v.pause();
+    };
+    const onAdClose = () => {
+      if (wasPlaying) void v.play().catch(() => null);
+      wasPlaying = false;
+    };
+
+    v.addEventListener("play", onPlay);
+    v.addEventListener("pause", onPause);
+    window.addEventListener("ccc:ad-open", onAdOpen);
+    window.addEventListener("ccc:ad-close", onAdClose);
+    return () => {
+      v.removeEventListener("play", onPlay);
+      v.removeEventListener("pause", onPause);
+      window.removeEventListener("ccc:ad-open", onAdOpen);
+      window.removeEventListener("ccc:ad-close", onAdClose);
+    };
+  }, []);
+
   // Flux adaptatif : Safari et iPhone le lisent nativement, les autres navigateurs passent par hls.js.
   useEffect(() => {
     if (kind !== "hls") return;
@@ -176,6 +206,9 @@ export function VideoPlayer({
           onLoadedMetadata={(e) => {
             const v = e.currentTarget;
             if (initialPosition > 0 && initialPosition < v.duration) v.currentTime = initialPosition;
+            // Durée réelle communiquée à la publicité intercalée : elle s'intercale à mi-parcours
+            // d'un court extrait comme au bout d'une minute d'un long film.
+            window.dispatchEvent(new CustomEvent("ccc:video-meta", { detail: { duration: v.duration } }));
           }}
           onTimeUpdate={() => Date.now() - lastSave.current > SAVE_EVERY_MS && save()}
           onPause={() => save()}

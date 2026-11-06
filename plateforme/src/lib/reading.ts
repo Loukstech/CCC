@@ -5,9 +5,23 @@ import type { CurrentUser } from "@/lib/dal";
 import { getCountry, isAvailable } from "@/lib/rights";
 
 type WorkType = "BOOK" | "FILM" | "DOCUMENTARY";
+type AccessModeKey = "FREE" | "PURCHASE" | "SUBSCRIPTION";
 
 export type ReadAccess =
-  | { ok: true; work: { id: string; slug: string; title: string; author: string | null; type: WorkType; fileKey: string; language: string } }
+  | {
+      ok: true;
+      work: {
+        id: string;
+        slug: string;
+        title: string;
+        author: string | null;
+        type: WorkType;
+        fileKey: string;
+        language: string;
+        /** Gratuit ou payant : c'est ce qui décide si une publicité peut s'intercaler. */
+        access: AccessModeKey;
+      };
+    }
   | { ok: false; reason: "not-found" | "not-owned" | "unavailable" | "no-file" | "device" };
 
 /**
@@ -47,7 +61,16 @@ async function authorizeMedia(
   if (!work.fileKey) return { ok: false, reason: "no-file" };
   return {
     ok: true,
-    work: { id: work.id, slug: work.slug, title: work.title, author: work.author, type: work.type, fileKey: work.fileKey, language: work.language },
+    work: {
+      id: work.id,
+      slug: work.slug,
+      title: work.title,
+      author: work.author,
+      type: work.type,
+      fileKey: work.fileKey,
+      language: work.language,
+      access: work.access,
+    },
   };
 }
 

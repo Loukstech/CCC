@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
+import { AdInterstitial } from "@/components/AdInterstitial";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { getAds } from "@/lib/ads";
 import { getCurrentUser } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { t } from "@/lib/i18n";
@@ -54,6 +56,14 @@ async function Watch({ params }: { params: PageProps<"/regarder/[slug]">["params
   const duration = Number(progress?.locator ?? 0);
   const resume = progress && duration > 0 && progress.position < duration - 8 ? Math.floor(progress.position) : 0;
 
+  // Publicité intercalée, réservée aux œuvres gratuites : celui qui a payé ne la voit pas.
+  // À défaut d'annonce prévue pour l'interruption, on réutilise celles de la fiche d'œuvre.
+  const breakAds = access.work.access === "FREE" ? await getAds("INTERSTITIAL") : [];
+  const fallbackAds = breakAds.length === 0 && access.work.access === "FREE" ? await getAds("WORK") : [];
+  const ads = breakAds.length > 0 ? breakAds : fallbackAds;
+  // Courte vidéo de démonstration : la coupure arrive tôt, sinon elle ne se verrait jamais.
+  const breakDelay = (work.durationMin ?? 0) <= 2 ? 10_000 : 90_000;
+
   return (
     <div className="mx-auto w-full max-w-5xl px-0 pb-10 sm:px-5 sm:pt-6">
       <Link href={`/oeuvres/${access.work.slug}`} className="inline-block px-4 py-3 text-sm text-white/70 hover:text-white sm:px-0">
@@ -69,6 +79,9 @@ async function Watch({ params }: { params: PageProps<"/regarder/[slug]">["params
         tracks={subtitles}
         watermark={`${user.name ?? user.email ?? t(lang, "video.subscriber")} · ${user.id.slice(-6).toUpperCase()}`}
       />
+      {ads.length > 0 && (
+        <AdInterstitial ads={ads} lang={lang} workId={access.work.id} mode="video" delayMs={breakDelay} />
+      )}
       <div className="px-4 pt-5 sm:px-0">
         <h1 className="font-display text-2xl font-semibold sm:text-3xl">{access.work.title}</h1>
         {access.work.author && <p className="mt-1 text-white/70">{access.work.author}</p>}
