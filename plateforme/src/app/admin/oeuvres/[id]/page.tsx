@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { deletePrice, savePrice, saveRights, saveVideoKey } from "@/app/actions/admin-works";
+import { deletePrice, deleteSubtitle, savePrice, saveRights, saveSubtitle, saveVideoKey } from "@/app/actions/admin-works";
 import { ActionForm, CheckField, CheckGroup, Field, SelectField } from "@/components/ActionForm";
 import { COUNTRIES, countryName, currencyOf } from "@/lib/countries";
 import { formatMoney } from "@/lib/currency";
@@ -69,6 +69,7 @@ async function Manage({
       fileKey: true,
       prices: { orderBy: { country: "asc" }, select: { id: true, country: true, currency: true, amount: true } },
       licenses: { orderBy: { createdAt: "asc" }, select: { countries: true, contractRef: true, allowWeb: true, allowOffline: true, startsAt: true, endsAt: true } },
+      subtitles: { orderBy: [{ isDefault: "desc" }, { lang: "asc" }], select: { id: true, lang: true, label: true, src: true, isDefault: true } },
     },
   });
   if (!work) notFound();
@@ -155,6 +156,53 @@ async function Manage({
                   defaultValue={work.fileKey ?? ""}
                   hint={t(lang, "wk.videoKeyHint")}
                 />
+              </ActionForm>
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-muted">{t(lang, "wk.roleNoVideo")}</p>
+          )}
+        </section>
+      )}
+
+      {work.type !== "BOOK" && (
+        <section className={card}>
+          <h2 className={h2}>{t(lang, "wk.subtitles")}</h2>
+          <p className="mt-1 text-sm text-muted">{t(lang, "wk.subtitlesHint")}</p>
+          <ul className="mt-3 divide-y divide-line">
+            {work.subtitles.length === 0 && <li className="py-2 text-sm text-muted">{t(lang, "wk.subtitleNone")}</li>}
+            {work.subtitles.map((track) => (
+              <li key={track.id} className="flex items-start justify-between gap-3 py-2 text-sm">
+                <span className="min-w-0">
+                  <strong>{track.label}</strong> <span className="text-muted">({track.lang})</span>
+                  {track.isDefault && (
+                    <span className="ml-2 rounded bg-brand/10 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-brand uppercase">
+                      {t(lang, "wk.subtitleDefaultBadge")}
+                    </span>
+                  )}
+                  <span className="mt-0.5 block truncate text-xs text-muted">{track.src}</span>
+                </span>
+                {canFile && (
+                  <form action={deleteSubtitle}>
+                    <input type="hidden" name="id" value={track.id} />
+                    <button type="submit" className="rounded-lg px-2 py-1 text-red-600 hover:bg-red-50">
+                      {t(lang, "wk.subtitleRemove")}
+                    </button>
+                  </form>
+                )}
+              </li>
+            ))}
+          </ul>
+          {canFile ? (
+            <div className="mt-4 border-t border-line pt-4">
+              <p className="mb-2 text-sm font-medium text-ink">{t(lang, "wk.subtitleAdd")}</p>
+              <ActionForm action={saveSubtitle} submitLabel={t(lang, "wk.subtitleSave")} lang={lang}>
+                <input type="hidden" name="workId" value={work.id} />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label={t(lang, "wk.subtitleLang")} name="lang" hint={t(lang, "wk.subtitleLangHint")} />
+                  <Field label={t(lang, "wk.subtitleLabel")} name="label" hint={t(lang, "wk.subtitleLabelHint")} />
+                </div>
+                <Field label={t(lang, "wk.subtitleSrc")} name="src" hint="/subtitles/demo-film-3.fr.vtt" />
+                <CheckField label={t(lang, "wk.subtitleDefault")} name="isDefault" />
               </ActionForm>
             </div>
           ) : (

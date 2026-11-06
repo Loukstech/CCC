@@ -35,13 +35,19 @@ async function Watch({ params }: { params: PageProps<"/regarder/[slug]">["params
     redirect(`/oeuvres/${slug}`);
   }
 
-  const [playback, progress, work] = await Promise.all([
+  const [playback, progress, work, subtitles] = await Promise.all([
     getVideoProvider(access.work.fileKey).getPlayback(access.work.fileKey, { userId: user.id }),
     db.progress.findUnique({
       where: { userId_workId: { userId: user.id, workId: access.work.id } },
       select: { position: true, locator: true },
     }),
     db.work.findUniqueOrThrow({ where: { id: access.work.id }, select: { description: true, durationMin: true } }),
+    // Pistes de sous-titres : la piste par défaut d'abord, puis l'ordre alphabétique des langues.
+    db.subtitle.findMany({
+      where: { workId: access.work.id },
+      orderBy: [{ isDefault: "desc" }, { lang: "asc" }],
+      select: { lang: true, label: true, src: true, isDefault: true },
+    }),
   ]);
 
   // Reprise : on ne reprend pas dans les dernières secondes (vidéo terminée : on recommence).
@@ -60,6 +66,7 @@ async function Watch({ params }: { params: PageProps<"/regarder/[slug]">["params
         src={playback.url}
         kind={playback.kind}
         initialPosition={resume}
+        tracks={subtitles}
         watermark={`${user.name ?? user.email ?? t(lang, "video.subscriber")} · ${user.id.slice(-6).toUpperCase()}`}
       />
       <div className="px-4 pt-5 sm:px-0">

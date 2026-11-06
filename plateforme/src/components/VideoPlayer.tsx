@@ -7,6 +7,17 @@ import { t, type Lang } from "@/lib/i18n";
 const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
 const SAVE_EVERY_MS = 10_000;
 
+/** Une piste de sous-titres WebVTT, telle qu'elle est stockée en base pour une œuvre. */
+export type SubtitleTrack = {
+  /** Code langue court (« fr », « en ») : le navigateur s'en sert pour apparier la piste. */
+  lang: string;
+  /** Libellé lisible (« Français »). */
+  label: string;
+  /** Adresse du fichier .vtt. */
+  src: string;
+  isDefault: boolean;
+};
+
 type Props = {
   workId: string;
   title: string;
@@ -16,14 +27,30 @@ type Props = {
   initialPosition: number;
   /** Texte discret affiché sur l'image (filigrane : dissuade le partage d'écran, cahier des charges 13). */
   watermark: string;
+  /** Pistes de sous-titres disponibles. Vide : aucun bouton ST n'est affiché. */
+  tracks?: SubtitleTrack[];
   lang: Lang;
 };
 
 /**
  * Lecteur vidéo : reprise là où l'on s'est arrêté, sauts de 10 secondes, vitesse, qualité (flux adaptatif),
- * plein écran. La position est enregistrée côté serveur (toutes les 10 s, à la pause, à la fin, en quittant la page).
+ * sous-titres, plein écran. La position est enregistrée côté serveur (toutes les 10 s, à la pause, à la fin,
+ * en quittant la page).
+ *
+ * Les sous-titres sont des pistes WebVTT déclarées par `<track>` : le navigateur les charge lui-même, ce qui
+ * fonctionne aussi bien sur un MP4 que sur un flux HLS (hls.js expose les pistes du manifeste). Les pistes
+ * démarrent désactivées ; le bouton ST fait défiler « aucun → piste 1 → piste 2 → aucun ».
  */
-export function VideoPlayer({ workId, title, src, kind, initialPosition, watermark, lang }: Props) {
+export function VideoPlayer({
+  workId,
+  title,
+  src,
+  kind,
+  initialPosition,
+  watermark,
+  tracks = [],
+  lang,
+}: Props) {
   const box = useRef<HTMLDivElement>(null);
   const video = useRef<HTMLVideoElement>(null);
   const hls = useRef<Hls | null>(null);
@@ -32,6 +59,17 @@ export function VideoPlayer({ workId, title, src, kind, initialPosition, waterma
   const [error, setError] = useState(false);
   const [heights, setHeights] = useState<number[]>([]);
   const [level, setLevel] = useState(-1); // -1 : automatique
+  const [trackIndex, setTrackIndex] = useState(-1); // -1 : sous-titres désactivés
+
+  // Le mode des pistes ne se règle qu'en JavaScript : on aligne l'état du lecteur sur `trackIndex`.
+  useEffect(() => {
+    const v = video.current;
+    if (!v) return;
+    const list = v.textTracks;
+    for (let i = 0; i < list.length; i += 1) {
+      list[i].mode = i === trackIndex ? "showing" : "disabled";
+    }
+  }, [trackIndex, tracks.length, kind, src]);
 
   const save = useCallback(
     (keepalive = false) => {
@@ -101,6 +139,12 @@ export function VideoPlayer({ workId, title, src, kind, initialPosition, waterma
     setSpeed(next);
     if (video.current) video.current.playbackRate = next;
   };
+  // Sous-titres : aucun → piste 1 → piste 2 → … → aucun.
+  const cycleTrack = () => {
+    if (tracks.length === 0) return;
+    setTrackIndex((i) => (i + 1 >= tracks.length ? -1 : i + 1));
+  };
+  const activeTrack = trackIndex >= 0 ? tracks[trackIndex] : null;
   // Qualité : automatique, puis chaque niveau disponible (utile pour économiser les données mobiles).
   const cycleQuality = () => {
     const next = level + 1 >= heights.length ? -1 : level + 1;
@@ -139,7 +183,11 @@ export function VideoPlayer({ workId, title, src, kind, initialPosition, waterma
           onError={() => kind === "mp4" && setError(true)}
           className="size-full"
           aria-label={title}
-        />
+        >
+          {tracks.map((track) => (
+            <track key={track.lang} kind="subtitles" src={track.src} srcLang={track.lang} label={track.label} />
+          ))}
+        </video>
         <span
           aria-hidden
           className="pointer-events-none absolute top-3 right-3 rounded bg-black/30 px-2 py-0.5 text-[11px] font-medium text-white/50 select-none"
@@ -163,6 +211,22 @@ export function VideoPlayer({ workId, title, src, kind, initialPosition, waterma
           </button>
         </div>
         <div className="flex items-center gap-1">
+          {tracks.length > 0 && (
+            <button
+              type="button"
+              className={`${btn} min-w-12 ${activeTrack ? "bg-white/15 text-white" : ""}`}
+              onClick={cycleTrack}
+              aria-pressed={activeTrack !== null}
+              aria-label={
+                activeTrack
+                  ? t(lang, "video.subtitlesOn", { lang: activeTrack.label })
+                  : t(lang, "video.subtitlesOff")
+              }
+              title={t(lang, "video.subtitles")}
+            >
+              ST{activeTrack ? ` · ${activeTrack.lang.toUpperCase()}` : ""}
+            </button>
+          )}
           {heights.length > 1 && (
             <button
               type="button"

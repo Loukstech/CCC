@@ -133,3 +133,58 @@ export async function deletePrice(formData: FormData) {
   });
   refresh(price.workId);
 }
+
+/**
+ * Piste de sous-titres d'une vidéo (fichier WebVTT).
+ *
+ * Le fichier n'est pas téléversé ici : on enregistre son **adresse**. Un `.vtt` déposé dans
+ * `public/subtitles` est servi par Next avec le type `text/vtt`, ce qui suffit au navigateur ;
+ * une adresse externe (https://…vtt) fonctionne aussi, par exemple pour un sous-titre hébergé
+ * chez le prestataire vidéo.
+ */
+export async function saveSubtitle(_: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireStaff(FILE_ROLES);
+  const lang = await getLang();
+  const workId = String(formData.get("workId") ?? "");
+  const code = String(formData.get("lang") ?? "").trim().toLowerCase();
+  const label = String(formData.get("label") ?? "").trim();
+  const src = String(formData.get("src") ?? "").trim();
+  const isDefault = formData.get("isDefault") === "on";
+  const values = { lang: code, label, src, isDefault: isDefault ? "on" : "" };
+
+  if (!/^[a-z]{2,3}(-[a-z0-9]{2,8})?$/.test(code)) return { error: t(lang, "wk.errSubtitleLang"), values };
+  if (!label || label.length > 40) return { error: t(lang, "wk.errSubtitleLabel"), values };
+  // Chemin interne (/subtitles/…) ou adresse absolue, toujours vers un .vtt.
+  if (!/^(\/|https?:\/\/)\S+\.vtt$/i.test(src)) return { error: t(lang, "wk.errSubtitleSrc"), values };
+
+  const work = await db.work.findUnique({ where: { id: workId }, select: { id: true, type: true } });
+  if (!work) return { error: t(lang, "wk.errWork"), values };
+  if (work.type === "BOOK") return { error: t(lang, "wk.errBookSubtitle"), values };
+
+  // Une seule piste par défaut par œuvre : les autres sont désactivées avant l'écriture.
+  if (isDefault) await db.subtitle.updateMany({ where: { workId }, data: { isDefault: false } });
+
+  await db.subtitle.upsert({
+    where: { workId_lang: { workId, lang: code } },
+    update: { label, src, isDefault },
+    create: { workId, lang: code, label, src, isDefault },
+  });
+  await db.auditLog.create({
+    data: { actorId: user.id, action: "work.subtitle", target: workId, details: { lang: code, src, isDefault } },
+  });
+  refresh(workId);
+  return { notice: t(lang, "wk.subtitleSaved") };
+}
+
+/** Retire une piste de sous-titres. */
+export async function deleteSubtitle(formData: FormData) {
+  const user = await requireStaff(FILE_ROLES);
+  const id = String(formData.get("id") ?? "");
+  const track = await db.subtitle.findUnique({ where: { id }, select: { id: true, workId: true, lang: true } });
+  if (!track) return;
+  await db.subtitle.delete({ where: { id } });
+  await db.auditLog.create({
+    data: { actorId: user.id, action: "work.subtitle.delete", target: track.workId, details: { lang: track.lang } },
+  });
+  refresh(track.workId);
+}

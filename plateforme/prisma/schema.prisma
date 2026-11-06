@@ -201,6 +201,7 @@ model Work {
   bookmarks Bookmark[]
   reviews   Review[]
   comments  Comment[]
+  subtitles Subtitle[]
 
   /// Moyennes dénormalisées : recalculées à chaque changement de statut d'un avis ou d'un commentaire.
   ratingAvg    Float @default(0)
@@ -209,6 +210,25 @@ model Work {
 
   @@index([type, status])
   @@index([authorId])
+}
+
+// Sous-titres d'une vidéo (films et documentaires). Une piste par langue et par œuvre.
+model Subtitle {
+  id        String   @id @default(cuid())
+  workId    String
+  work      Work     @relation(fields: [workId], references: [id], onDelete: Cascade)
+  /// Code langue court BCP-47 (« fr », « en ») : c'est lui que le navigateur compare.
+  lang      String
+  /// Libellé affiché dans le menu du lecteur (« Français », « English »).
+  label     String
+  /// Adresse du fichier WebVTT, servie telle quelle au navigateur.
+  src       String
+  /// Piste activée quand aucune ne correspond à la langue de l'interface.
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@unique([workId, lang])
+  @@index([workId])
 }
 
 // Prix par pays (section 11)

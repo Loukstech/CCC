@@ -15,6 +15,7 @@
     "db:comptes": "tsx prisma/seed-comptes.ts",
     "db:covers": "tsx prisma/demo-covers.ts",
     "db:client-books": "node scripts/seed-client-books.mjs",
+    "db:subtitles": "node scripts/seed-subtitles.mjs",
     "logos": "node scripts/build-logos.mjs",
     "admin:password": "tsx scripts/set-admin-password.ts",
     "demo:epub": "node scripts/make-demo-epub.mjs",
