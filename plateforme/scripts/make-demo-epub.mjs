@@ -1,9 +1,14 @@
-// Génère les livres EPUB de démonstration (textes fictifs) dans storage/books/.
+// Génère les EPUB lus par le lecteur dans storage/books/ (inclus dans la fonction déployée
+// grâce à outputFileTracingIncludes dans next.config.ts).
 //
-//   npm run demo:epub
+//   npm run demo:epub        (appelé automatiquement par npm run build)
 //
-// Ce ne sont pas des œuvres réelles : ils servent uniquement à tester le lecteur.
-import { mkdirSync, writeFileSync } from "node:fs";
+// Deux jeux de livres :
+//  - les textes fictifs de démonstration ci-dessous ;
+//  - les livres fournis par le client, décrits dans scripts/client-books.json (textes réels,
+//    extraits une seule fois des PDF puis versionnés pour que le build Vercel soit autonome).
+// Les deux servent à tester le lecteur, notamment la lecture à voix haute.
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import JSZip from "jszip";
@@ -278,6 +283,12 @@ ${files
   writeFileSync(join(outDir, `${slug}.epub`), buf);
   return buf.length;
 }
+
+// Livres fournis par le client pour les tests de lecture (dont la lecture à voix haute).
+// Le texte est extrait des PDF une seule fois et versionné dans scripts/client-books.json :
+// le build Vercel n'a ni Python ni les PDF, il doit pouvoir régénérer ces EPUB seul.
+const clientBooks = JSON.parse(readFileSync(join(root, "scripts", "client-books.json"), "utf8"));
+BOOKS.push(...clientBooks);
 
 mkdirSync(outDir, { recursive: true });
 for (const book of BOOKS) {
