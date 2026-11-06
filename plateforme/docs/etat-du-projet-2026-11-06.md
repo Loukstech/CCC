@@ -2,8 +2,8 @@
 
 > Suite de [etat-du-projet-2026-11-05.md](./etat-du-projet-2026-11-05.md), qui couvre les lots 1 à 7.
 >
-> **Dernière révision : 6 novembre, 19 h.** Le local, GitHub (`origin/main`) et le site en ligne
-> servent le même commit d'application (`4820e51`) ; ce document et celui du lot 8 ne modifient que
+> **Dernière révision : 6 novembre, 22 h 30.** Le local, GitHub (`origin/main`) et le site en ligne
+> servent le même commit d'application (`0435956`) ; ce document et celui du lot 8 ne modifient que
 > la documentation. Base Neon à jour (`prisma migrate deploy` appliqué). Déploiement Vercel
 > automatique.
 >
@@ -17,6 +17,7 @@
 | 1–7 | Diocèses, avis, espace diocèse, commissions, versements, espace écrivain, manuscrits | Livré (voir le document du 5 novembre) |
 | 8 | **Codes de partenariat** (diocèses et écrivains) et **événements en direct** | **Livré, en ligne, vérifié** |
 | — | **Deux livres du client** importés, lecture à voix haute testée | **Livré, en ligne** |
+| — | **Sous-titres** des films et documentaires (WebVTT, FR/EN) | **Livré, en ligne, vérifié** |
 
 Le détail du lot 8 est dans [lot-8-partenariats-et-directs.md](./lot-8-partenariats-et-directs.md).
 
@@ -89,3 +90,31 @@ présents ; ils restent restaurables depuis les sauvegardes locales.
    Mux du client n'est pas encore branché.
 3. **Sort des livres du client.** Ils sont gratuits pour les tests. Faut-il les passer en payant, et
    sous quel contrat ?
+
+## 7. Sous-titres des films et documentaires
+
+Livré et vérifié en ligne (commit `0435956`).
+
+- **Modèle `Subtitle`** : une piste par œuvre et par langue (contrainte unique `workId` + `lang`),
+  avec un libellé, l'adresse du fichier `.vtt` et un indicateur « piste par défaut ». Migration
+  `20261106210428_sous_titres`, appliquée.
+- **Lecteur** : chaque piste devient une balise `<track kind="subtitles">`. Un bouton **ST** dans la
+  barre du lecteur fait défiler « aucun → piste 1 → piste 2 → aucun » et affiche la langue active
+  (`ST · FR`). Les sous-titres démarrent désactivés. Le style `::cue` (fond sombre translucide, taille
+  adaptée au mobile) est dans `globals.css`.
+- **Page `/regarder/[slug]`** : lit les pistes de l'œuvre et les transmet au lecteur.
+- **Administration** : section « Sous-titres » dans la fiche d'une œuvre — ajout, remplacement,
+  suppression, choix de la piste par défaut. Chaque changement est journalisé (`AuditLog`).
+- **Fichiers** : déposés dans `public/subtitles/`, servis par Next avec le type `text/vtt`
+  (vérifié en production), ce qui est exactement ce qu'attend le navigateur.
+- **Démonstration** : deux `.vtt` (français et anglais) sur les deux vidéos **gratuites**
+  (`demo-film-3`, `demo-documentaire-gratuit`), attachés par `npm run db:subtitles` (idempotent).
+
+Ce qui reste :
+
+| Sujet | Pourquoi |
+|---|---|
+| Les vrais sous-titres des films du client | Les `.vtt` actuels sont des exemples de démonstration. Il faut une transcription par film et par langue, calée sur le timecode. |
+| Sous-titres sur Mux | La même balise `<track>` fonctionne sur un flux HLS. On peut soit déposer le `.vtt` dans `public/subtitles`, soit créer une piste texte chez Mux (API `tracks`) pour qu'elle soit servie avec le manifeste. |
+| Choix de langue mémorisé | Aujourd'hui le choix vaut pour la séance en cours. On peut le retenir par compte, comme la vitesse. |
+| Sous-titres sur les directs | Non couvert : le lot 8 diffuse en direct, sans piste texte. |
