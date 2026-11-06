@@ -7,8 +7,6 @@ import { t, type Lang } from "@/lib/i18n";
 import { getLang } from "@/lib/lang";
 import { PUBLIC_LIVE_STATUSES } from "@/lib/live";
 
-export const metadata = { title: "En direct — CCC" };
-
 // Page bilingue et alimentée par la base : rendu à la demande, pas de prérendu statique.
 export const instant = false;
 
