@@ -5,6 +5,7 @@ import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { ThemeSegment } from "@/components/ThemeToggle";
 import { t } from "@/lib/i18n";
 import { getLang } from "@/lib/lang";
+import { SITE, COPYRIGHT_YEAR } from "@/lib/site";
 
 export async function Footer() {
   const lang = await getLang();
@@ -29,7 +30,6 @@ export async function Footer() {
         <nav aria-label={t(lang, "nav.myAccount")}>
           <p className="text-sm font-semibold text-white">{t(lang, "nav.myAccount")}</p>
           <ul className="mt-3 space-y-2 text-sm">
-            <li><Link href="/compte" className="hover:text-gold">{t(lang, "nav.myAccount")}</Link></li>
             <li><Link href="/connexion" className="hover:text-gold">{t(lang, "auth.login")}</Link></li>
             <li><Link href="/inscription" className="hover:text-gold">{t(lang, "auth.signup")}</Link></li>
           </ul>
@@ -45,12 +45,38 @@ export async function Footer() {
         </div>
       </div>
       <div className="border-t border-white/10">
-        <p className="mx-auto w-full max-w-6xl px-4 py-5 text-xs text-white/50 sm:px-5">
-          {t(lang, "footer.copy")}{" "}
-          <a href="https://www.pexels.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-gold">
-            Pexels
-          </a>
-        </p>
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-4 py-5 text-xs text-white/50 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-5">
+          <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            <span>{t(lang, "footer.copy", { year: COPYRIGHT_YEAR })}</span>
+            <span aria-hidden className="text-white/25">·</span>
+            <Link href="/contact" className="underline-offset-2 hover:text-gold hover:underline">
+              {t(lang, "nav.contact")}
+            </Link>
+          </p>
+          <p className="sm:text-right">
+            {t(lang, "footer.credit")}{" "}
+            {SITE.developerUrl ? (
+              <a
+                href={SITE.developerUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-white/75 underline-offset-2 hover:text-gold hover:underline"
+              >
+                {SITE.developer}
+              </a>
+            ) : (
+              <strong className="font-semibold text-white/75">{SITE.developer}</strong>
+            )}
+          </p>
+        </div>
+        <div className="border-t border-white/5">
+          <p className="mx-auto w-full max-w-6xl px-4 py-3 text-xs text-white/40 sm:px-5">
+            {t(lang, "footer.demo")} · {t(lang, "footer.photos")}{" "}
+            <a href="https://www.pexels.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-gold">
+              Pexels
+            </a>
+          </p>
+        </div>
       </div>
     </footer>
   );

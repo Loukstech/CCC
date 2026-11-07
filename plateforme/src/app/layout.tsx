@@ -5,6 +5,7 @@ import { StickyAdLoader } from "@/components/StickyAdLoader";
 import { BottomNavLoader } from "@/components/BottomNavLoader";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { SITE, COPYRIGHT_YEAR } from "@/lib/site";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -21,6 +22,11 @@ export const metadata: Metadata = {
   title: "CCC — Le savoir prend vie",
   description:
     "Lire des livres, regarder des documentaires et des films, même hors connexion.",
+  applicationName: SITE.name,
+  // Crédit développeur et copyright également lisibles par les machines (pas seulement le pied de page).
+  authors: [{ name: SITE.developer }],
+  creator: SITE.developer,
+  other: { copyright: `© ${COPYRIGHT_YEAR} ${SITE.name} — Tous droits réservés.` },
   // Site en préparation : pas d'indexation (à retirer au lancement, avec src/app/robots.ts).
   robots: { index: false, follow: false },
 };
