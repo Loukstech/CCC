@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type Hls from "hls.js";
+import { reportAudience } from "@/lib/audience-client";
 import { t, type Lang } from "@/lib/i18n";
 
 const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
@@ -210,6 +211,7 @@ export function VideoPlayer({
             // d'un court extrait comme au bout d'une minute d'un long film.
             window.dispatchEvent(new CustomEvent("ccc:video-meta", { detail: { duration: v.duration } }));
           }}
+          onPlaying={() => reportAudience(workId, "play")}
           onTimeUpdate={() => Date.now() - lastSave.current > SAVE_EVERY_MS && save()}
           onPause={() => save()}
           onEnded={() => save()}

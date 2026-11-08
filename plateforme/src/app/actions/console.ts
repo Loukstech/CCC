@@ -8,6 +8,7 @@ import {
   PARTNER_ROLES,
   requireStaff,
 } from "@/lib/dal";
+import { backfillAudience } from "@/lib/audience";
 import { db } from "@/lib/db";
 import { keep, type FormState } from "@/lib/form";
 import { ct } from "@/lib/console-i18n";
@@ -111,6 +112,7 @@ const TOOL_ROLES: Record<string, StaffRole[]> = {
   revokeCodes: PARTNER_ROLES,
   bulkPublish: EDITORIAL_ROLES,
   purgeAudit: SUPER,
+  audienceBackfill: SUPER,
 };
 
 const TOOL_ACTION: Record<string, string> = {
@@ -121,6 +123,7 @@ const TOOL_ACTION: Record<string, string> = {
   revokeCodes: "tool.revokeCodes",
   bulkPublish: "tool.bulkPublish",
   purgeAudit: "tool.purgeAudit",
+  audienceBackfill: "tool.audienceBackfill",
 };
 
 /**
@@ -238,6 +241,21 @@ export async function runConsoleTool(_: FormState, formData: FormData): Promise<
       notice = ct(lang, "tool.result.purgeAudit", { n: res.count, days });
       details.count = res.count;
       details.days = days;
+      break;
+    }
+    case "audienceBackfill": {
+      const result = await backfillAudience();
+      notice = result.skipped
+        ? ct(lang, "tool.result.audienceBackfillSkipped")
+        : ct(lang, "tool.result.audienceBackfill", {
+            plays: result.plays,
+            works: result.works,
+            days: result.days,
+          });
+      details.skipped = result.skipped;
+      details.count = result.plays;
+      details.works = result.works;
+      details.days = result.days;
       break;
     }
   }

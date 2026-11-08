@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Book, EpubCFI as EpubCFIType, NavItem, Rendition } from "epubjs";
 import { BookmarkIcon, ChevronIcon, HeadsetIcon } from "@/components/icons";
+import { reportAudience } from "@/lib/audience-client";
 import { t as tr, type Lang } from "@/lib/i18n";
 import { loadVoices, rankVoices, speechSupported, type VoiceChoice } from "@/lib/tts";
 
@@ -310,6 +311,8 @@ export function EpubReader({ workId, slug, title, lang, bookLanguage, initialLoc
         await r.display(initialLocator ?? undefined);
         if (cancelled) return;
         setStatus("ready");
+        // Lecture réellement démarrée : le fichier a été servi et la première page est affichée.
+        reportAudience(workId, "play");
 
         book.loaded.navigation.then((nav) => !cancelled && setToc(nav.toc));
         fetch(`/api/books/${workId}/bookmarks`)

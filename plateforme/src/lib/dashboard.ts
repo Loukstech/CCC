@@ -10,8 +10,8 @@ import { convertMinor } from "@/lib/currency";
  * - les montants sont ramenés en F CFA (plus petite unité) avec les taux indicatifs de `currency.ts`,
  *   car une commande peut être libellée dans plusieurs devises ;
  * - les séries mensuelles couvrent 6 mois glissants en UTC, mois courant inclus, y compris les mois vides ;
- * - les compteurs d'audience s'appuient sur les tables existantes (Progress, Favorite, Bookmark,
- *   Review). Il n'existe pas encore de compteur de vues ni de téléchargements : voir `limits`.
+ * - les signaux d'engagement historiques viennent de Progress, Favorite, Bookmark et Review ;
+ *   les vues, téléchargements et sessions réellement comptés vivent dans `lib/audience.ts`.
  */
 
 export const TREND_MONTHS = 6;

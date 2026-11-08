@@ -21,9 +21,10 @@ export const RANGES: RangeKey[] = ["7d", "30d", "90d", "12m"];
 export const isRangeKey = (v: string | undefined): v is RangeKey =>
   !!v && (RANGES as string[]).includes(v);
 
-const RANGE_DAYS: Record<RangeKey, number> = { "7d": 7, "30d": 30, "90d": 90, "12m": 365 };
-const BUCKETS: Record<RangeKey, number> = { "7d": 7, "30d": 10, "90d": 12, "12m": 12 };
-const DAY = 86_400_000;
+/** Partagés avec `lib/audience.ts` pour que les deux séries utilisent les mêmes fenêtres. */
+export const RANGE_DAYS: Record<RangeKey, number> = { "7d": 7, "30d": 30, "90d": 90, "12m": 365 };
+export const BUCKETS: Record<RangeKey, number> = { "7d": 7, "30d": 10, "90d": 12, "12m": 12 };
+export const DAY = 86_400_000;
 
 export type NamedCount = { key: string; count: number };
 export type PeriodPoint = {
@@ -187,6 +188,7 @@ async function tableInventory(): Promise<TableRow[]> {
     UNION ALL SELECT 'liveBroadcasters', COUNT(*)::int FROM "LiveBroadcaster"
     UNION ALL SELECT 'auditLogs', COUNT(*)::int FROM "AuditLog"
     UNION ALL SELECT 'appSettings', COUNT(*)::int FROM "AppSetting"
+    UNION ALL SELECT 'workAudienceStats', COUNT(*)::int FROM "WorkAudienceStat"
   `;
   return rows.map((r) => ({ key: r.key, count: Number(r.n) }));
 }

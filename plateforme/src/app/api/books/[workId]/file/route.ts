@@ -1,3 +1,4 @@
+import { trackAudience } from "@/lib/audience";
 import { getCurrentUser } from "@/lib/dal";
 import { authorizeRead } from "@/lib/reading";
 import { readBookFile } from "@/lib/storage";
@@ -17,6 +18,10 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/books/[workId]/
 
   const file = await readBookFile(access.work.fileKey);
   if (!file) return new Response("Introuvable.", { status: 404 });
+
+  // Comptage après les contrôles d'accès et l'existence réelle du fichier : on ne mesure
+  // que les téléchargements servis. `trackAudience` absorbe ses propres erreurs de base.
+  await trackAudience(workId, "download");
 
   return new Response(new Uint8Array(file), {
     headers: {

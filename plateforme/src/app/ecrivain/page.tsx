@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ActionForm, Field, TextAreaField, SelectField } from "@/components/ActionForm";
 import { DashboardCard, StatCard, TrendChart, compact, type ChartSeries } from "@/components/dashboard";
 import { requireWriterAccess } from "@/lib/writer-access";
+import { getWriterAudience } from "@/lib/audience";
 import { db } from "@/lib/db";
 import { getWriterDashboard } from "@/lib/dashboard";
 import { formatMoney } from "@/lib/currency";
@@ -35,8 +36,9 @@ async function Writer() {
   // partenariat consommé ou validation en back-office) peut ouvrir l'espace écrivain.
   const user = await requireWriterAccess();
   const lang = await getLang();
+  const now = new Date();
 
-  const [profile, works, balance, ledger, manuscripts, reviews, stats] = await Promise.all([
+  const [profile, works, balance, ledger, manuscripts, reviews, stats, audience] = await Promise.all([
     db.writerProfile.findUnique({ where: { userId: user.id } }),
     db.work.findMany({
       where: { authorId: user.id },
@@ -63,7 +65,8 @@ async function Writer() {
         work: { select: { slug: true, title: true } },
       },
     }),
-    getWriterDashboard(user.id),
+    getWriterDashboard(user.id, now),
+    getWriterAudience(user.id, lang, now),
   ]);
 
   const earned = ledger.months.reduce((n, m) => n + m.earned + m.refunded, 0);
@@ -81,6 +84,29 @@ async function Writer() {
       label: t(lang, "wr.trend.reads"),
       values: stats.trend.map((m) => m.reads),
       color: "var(--gold)",
+      format: (n) => String(n),
+    },
+  ];
+  const audienceEvents = audience.totals.views + audience.totals.downloads + audience.totals.plays;
+  const audienceMonths = audience.trend.map((m) => m.key);
+  const audienceLabels = audience.trend.map((m) => m.label);
+  const audienceSeries: ChartSeries[] = [
+    {
+      label: t(lang, "wr.analytics.views"),
+      values: audience.trend.map((m) => m.views),
+      color: "var(--brand)",
+      format: (n) => String(n),
+    },
+    {
+      label: t(lang, "wr.analytics.downloads"),
+      values: audience.trend.map((m) => m.downloads),
+      color: "var(--gold)",
+      format: (n) => String(n),
+    },
+    {
+      label: t(lang, "wr.analytics.plays"),
+      values: audience.trend.map((m) => m.plays),
+      color: "var(--brand-light)",
       format: (n) => String(n),
     },
   ];
@@ -124,7 +150,65 @@ async function Writer() {
         </DashboardCard>
       </div>
 
-      {stats.emptyAudience && (
+      {/* Vraies statistiques d'audience : compteurs cumulés, courbe mensuelle et classement privé. */}
+      <DashboardCard
+        title={t(lang, "wr.analytics.title")}
+        lead={t(lang, "wr.analytics.lead")}
+        aside={
+          <span className="rounded-full bg-brand/10 px-3 py-1 text-[11px] font-semibold text-brand">
+            {audience.firstDay
+              ? t(lang, "wr.analytics.since", { date: day(audience.firstDay, lang) })
+              : t(lang, "wr.analytics.noFirst")}
+          </span>
+        }
+      >
+        <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+          <div className="min-w-0">
+            <div className="mb-5 grid grid-cols-3 gap-2 sm:gap-3">
+              <StatCard label={t(lang, "wr.analytics.views")} value={compact(audience.totals.views, lang)} />
+              <StatCard label={t(lang, "wr.analytics.downloads")} value={compact(audience.totals.downloads, lang)} accent="gold" />
+              <StatCard label={t(lang, "wr.analytics.plays")} value={compact(audience.totals.plays, lang)} />
+            </div>
+            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">{t(lang, "wr.analytics.trend")}</p>
+            <TrendChart
+              months={audienceMonths}
+              labels={audienceLabels}
+              series={audienceSeries}
+              lang={lang}
+              ariaLabel={t(lang, "wr.analytics.trend")}
+            />
+          </div>
+          <div className="min-w-0 border-t border-line pt-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+            <h3 className={h2}>{t(lang, "wr.analytics.top")}</h3>
+            <p className="mb-2 text-xs text-muted">{t(lang, "wr.analytics.topLead")}</p>
+            {audience.top.length === 0 ? (
+              <p className="rounded-xl bg-brand/5 px-3 py-4 text-xs text-muted">{t(lang, "wr.analytics.empty")}</p>
+            ) : (
+              <ul className="flex flex-col divide-y divide-line">
+                {audience.top.map((w) => (
+                  <li key={w.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                    <span className="min-w-0">
+                      <Link href={`/oeuvres/${w.slug}`} className="block truncate font-medium text-ink hover:text-brand hover:underline">
+                        {w.title}
+                      </Link>
+                      <span className="text-xs text-muted">{t(lang, typeKey[w.type as keyof typeof typeKey])}</span>
+                    </span>
+                    <span className="shrink-0 text-right text-[11px] text-muted">
+                      <span className="block font-semibold text-ink tabular-nums">{t(lang, "wr.analytics.workViews", { n: w.views })}</span>
+                      {t(lang, "wr.analytics.workDownloads", { n: w.downloads })}
+                      {" · "}
+                      {t(lang, "wr.analytics.workPlays", { n: w.plays })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+        <p className="mt-4 border-t border-line pt-3 text-xs text-muted">{t(lang, "wr.analytics.note")}</p>
+      </DashboardCard>
+
+      {stats.emptyAudience && audienceEvents === 0 && (
         <p className="rounded-xl border border-gold/40 bg-gold-soft/30 px-4 py-3 text-xs text-ink">
           {t(lang, "wr.emptyAudience")}
         </p>

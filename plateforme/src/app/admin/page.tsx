@@ -22,6 +22,8 @@ import { cl, ct, type CKey } from "@/lib/console-i18n";
 import { t, type Key, type Lang } from "@/lib/i18n";
 import { getLang } from "@/lib/lang";
 import { getSettings } from "@/lib/settings";
+import { getAudienceAnalytics } from "@/lib/audience";
+import { getPopularity } from "@/lib/popularity";
 import { createWork, setWorkStatus } from "@/app/actions/works";
 import type { StaffRole } from "@/generated/prisma/enums";
 
@@ -115,8 +117,10 @@ async function Overview({ query }: { query: Promise<{ range?: string }> }) {
   const showAudit = settings.console_show_audit !== "false";
   const rowLimit = Math.min(200, Math.max(5, Number(settings.console_rows) || 25));
 
-  const [data, works] = await Promise.all([
-    getAdminOverview(range, currency, lang),
+  // Une seule horloge pour toutes les fenêtres statistiques affichées sur la page.
+  const now = new Date();
+  const [data, works, popularity, analytics] = await Promise.all([
+    getAdminOverview(range, currency, lang, now),
     canEditCatalog
       ? db.work.findMany({
           orderBy: { createdAt: "desc" },
@@ -126,6 +130,8 @@ async function Overview({ query }: { query: Promise<{ range?: string }> }) {
           },
         })
       : Promise.resolve([]),
+    getPopularity(now, Math.min(rowLimit, 12)),
+    getAudienceAnalytics(range, lang, now, Math.min(rowLimit, 10)),
   ]);
 
   const money = (n: number) => formatMoney(n, currency, lang);
@@ -177,6 +183,49 @@ async function Overview({ query }: { query: Promise<{ range?: string }> }) {
       <span key="rc" className="text-muted tabular-nums">{num(w.ratingCount)}</span>,
     ],
   }));
+
+  // Popularité : classement par signaux d'engagement déjà stockés (aucune migration).
+  const popularityRows: TableRow[] = popularity.top.map((w) => ({
+    key: w.id,
+    cells: [
+      <Link key="t" href={`/oeuvres/${w.slug}`} className="block max-w-[18rem] truncate font-medium text-ink hover:text-brand hover:underline" title={w.title}>
+        {w.title}
+      </Link>,
+      <Pill key="ty">{cl(lang, w.type)}</Pill>,
+      <span key="f" className="tabular-nums">{num(w.favorites)}</span>,
+      <span key="b" className="tabular-nums">{num(w.bookmarks)}</span>,
+      <span key="r" className="tabular-nums">{num(w.readers)}</span>,
+      <span key="v" className="tabular-nums">{num(w.reviews)}</span>,
+      <span key="a" className="tabular-nums">{w.reviews ? `${w.ratingAvg.toFixed(1)} / 5` : "—"}</span>,
+      <span key="s" className="font-semibold tabular-nums text-brand">{num(w.score)}</span>,
+    ],
+  }));
+  const ratingItems = [...popularity.ratings]
+    .reverse()
+    .map((r) => ({ label: ct(lang, "pop.stars", { n: r.stars }), count: r.count }));
+
+  // Analytique : compteurs réels, courbe sur la même fenêtre que le reste de la console.
+  const analyticsMonths = analytics.period.points.map((p) => p.key);
+  const analyticsLabels = analytics.period.points.map((p) => p.label);
+  const analyticsSeries: ChartSeries[] = [
+    { label: ct(lang, "ana.views"), values: analytics.period.points.map((p) => p.views), color: "var(--brand)", format: num },
+    { label: ct(lang, "ana.downloads"), values: analytics.period.points.map((p) => p.downloads), color: "var(--gold)", format: num },
+    { label: ct(lang, "ana.plays"), values: analytics.period.points.map((p) => p.plays), color: "var(--brand-light)", format: num },
+  ];
+  const analyticsRows: TableRow[] = analytics.top.map((w) => ({
+    key: w.id,
+    cells: [
+      <Link key="t" href={`/oeuvres/${w.slug}`} className="block max-w-[16rem] truncate font-medium text-ink hover:text-brand hover:underline" title={w.title}>
+        {w.title}
+      </Link>,
+      <Pill key="ty">{cl(lang, w.type)}</Pill>,
+      <span key="v" className="tabular-nums">{num(w.views)}</span>,
+      <span key="d" className="tabular-nums">{num(w.downloads)}</span>,
+      <span key="p" className="tabular-nums">{num(w.plays)}</span>,
+      <span key="s" className="font-semibold tabular-nums text-brand">{num(w.views + w.downloads + w.plays)}</span>,
+    ],
+  }));
+  const analyticsEvents = analytics.period.views + analytics.period.downloads + analytics.period.plays;
 
   const userRows: TableRow[] = data.recentUsers.map((u) => ({
     key: u.id,
@@ -337,6 +386,117 @@ async function Overview({ query }: { query: Promise<{ range?: string }> }) {
           </div>
         </ConsoleCard>
       )}
+
+      {/* Popularité : favoris, signets, lectures et avis, croisés par œuvre */}
+      <ConsoleCard
+        title={ct(lang, "sec.popularity")}
+        lead={ct(lang, "pop.lead")}
+        aside={
+          <Pill tone="gold">
+            {ct(lang, "pop.engagedHint", { n: popularity.totals.engagedWorks, total: popularity.totals.works })}
+          </Pill>
+        }
+        bodyClass="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_minmax(0,2.4fr)]"
+      >
+        <div className="min-w-0">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <Metric label={ct(lang, "pop.favorites")} value={num(popularity.totals.favorites)} />
+            <Metric label={ct(lang, "pop.bookmarks")} value={num(popularity.totals.bookmarks)} />
+            <Metric label={ct(lang, "pop.readers")} value={num(popularity.totals.readers)} tone="gold" />
+            <Metric label={ct(lang, "pop.reviews")} value={num(popularity.totals.reviews)} />
+            <Metric label={ct(lang, "pop.rating")} value={popularity.totals.ratingAvg ? `${popularity.totals.ratingAvg.toFixed(1)} / 5` : "—"} />
+            <Metric label={ct(lang, "pop.active30")} value={num(popularity.totals.activeReaders30d)} />
+          </div>
+          <div className="mt-3 border-t border-line pt-3">
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted">{ct(lang, "pop.ratings")}</p>
+            <BreakdownBars items={ratingItems} />
+            <p className="mt-3 text-[10px] leading-snug text-muted">{ct(lang, "pop.scoreHint")}</p>
+            {popularity.totals.favorites + popularity.totals.bookmarks + popularity.totals.reviews === 0 && (
+              <p className="mt-1.5 text-[10px] leading-snug text-muted">{ct(lang, "pop.noSignals")}</p>
+            )}
+          </div>
+        </div>
+        <div className="min-w-0 border-t border-line pt-3 2xl:border-l 2xl:border-t-0 2xl:pl-4 2xl:pt-0">
+          <p className="mb-1.5 text-[11px] font-semibold text-ink">{ct(lang, "pop.top")}</p>
+          <ConsoleTable
+            head={[
+              ct(lang, "col.title"), ct(lang, "col.type"), ct(lang, "pop.favorites"),
+              ct(lang, "pop.bookmarks"), ct(lang, "pop.readers"), ct(lang, "pop.reviews"),
+              ct(lang, "col.rating"), ct(lang, "pop.score"),
+            ]}
+            rows={popularityRows}
+            empty={ct(lang, "pop.empty")}
+            align={["left", "left", "right", "right", "right", "right", "right", "right"]}
+          />
+        </div>
+      </ConsoleCard>
+
+      {/* Analytique : compteurs d'audience réels et évolution dans le temps */}
+      <ConsoleCard
+        title={ct(lang, "sec.analytics")}
+        lead={ct(lang, "ana.lead")}
+        aside={<Pill tone="brand">{ct(lang, "ana.tracked", { n: analytics.trackedWorks })}</Pill>}
+        bodyClass="grid gap-4 2xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]"
+      >
+        <div className="min-w-0">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 2xl:grid-cols-6">
+            <Metric label={ct(lang, "ana.totalViews")} value={num(analytics.totals.views)} />
+            <Metric label={ct(lang, "ana.totalDownloads")} value={num(analytics.totals.downloads)} tone="gold" />
+            <Metric label={ct(lang, "ana.totalPlays")} value={num(analytics.totals.plays)} />
+            <Metric label={ct(lang, "ana.rangeViews")} value={num(analytics.period.views)} />
+            <Metric label={ct(lang, "ana.rangeDownloads")} value={num(analytics.period.downloads)} tone="gold" />
+            <Metric label={ct(lang, "ana.rangePlays")} value={num(analytics.period.plays)} />
+          </div>
+          <div className="mt-3 border-t border-line pt-3">
+            <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
+              <p className="text-[11px] font-semibold text-ink">{ct(lang, "ana.trend")}</p>
+              <p className="text-[10px] text-muted">
+                {ct(lang, "ana.trendLead", {
+                  n: analytics.period.points.length,
+                  range: ct(lang, `period.${range}` as CKey),
+                })}
+              </p>
+            </div>
+            {showCharts ? (
+              <TrendChart
+                months={analyticsMonths}
+                labels={analyticsLabels}
+                series={analyticsSeries}
+                lang={lang}
+                ariaLabel={ct(lang, "ana.trend")}
+              />
+            ) : (
+              <p className="rounded-lg border border-dashed border-line px-3 py-5 text-center text-[11px] text-muted">
+                {ct(lang, "ana.chartsOff")}
+              </p>
+            )}
+            {analyticsEvents === 0 && (
+              <p className="mt-1.5 text-[10px] leading-snug text-muted">{ct(lang, "ana.empty")}</p>
+            )}
+            <p className="mt-2 text-[10px] leading-snug text-muted">{ct(lang, "ana.backfillNote")}</p>
+          </div>
+        </div>
+        <div className="min-w-0 border-t border-line pt-3 2xl:border-l 2xl:border-t-0 2xl:pl-4 2xl:pt-0">
+          <p className="text-[11px] font-semibold text-ink">{ct(lang, "ana.top")}</p>
+          <p className="mb-1.5 text-[10px] text-muted">{ct(lang, "ana.topLead")}</p>
+          <ConsoleTable
+            head={[
+              ct(lang, "col.title"), ct(lang, "col.type"), ct(lang, "ana.views"),
+              ct(lang, "ana.downloads"), ct(lang, "ana.plays"), ct(lang, "ana.total"),
+            ]}
+            rows={analyticsRows}
+            empty={ct(lang, "ana.empty")}
+            align={["left", "left", "right", "right", "right", "right"]}
+          />
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <Metric label={ct(lang, "ana.dailyRows")} value={num(analytics.statRows)} />
+            <Metric
+              label={ct(lang, "ana.since")}
+              value={analytics.firstDay ? fmtDate(analytics.firstDay, lang) : ct(lang, "ana.noFirst")}
+            />
+          </div>
+        </div>
+      </ConsoleCard>
 
       {/* À traiter, modération, santé */}
       <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">

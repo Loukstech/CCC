@@ -214,9 +214,37 @@ model Work {
   ratingCount  Int   @default(0)
   commentCount Int   @default(0)
 
+  /// Compteurs d'audience cumulés. Incrémentés par `lib/audience.ts` en même temps que le
+  /// rollup journalier : lecture rapide sur les fiches sans parcourir tout l'historique.
+  viewCount     Int @default(0)
+  downloadCount Int @default(0)
+  playCount     Int @default(0)
+
+  audienceStats WorkAudienceStat[]
+
   @@index([type, status])
   @@index([authorId])
   @@index([translationGroupId])
+}
+
+/**
+ * Rollup journalier des événements d'audience, une ligne par (œuvre, jour UTC).
+ * On stocke des compteurs agrégés plutôt que chaque visite : les courbes de tendance restent
+ * disponibles sur 12 mois sans table d'événements illimitée, et l'écriture reste un seul upsert.
+ */
+model WorkAudienceStat {
+  id        String   @id @default(cuid())
+  workId    String
+  work      Work     @relation(fields: [workId], references: [id], onDelete: Cascade)
+  day       DateTime @db.Date
+  views     Int      @default(0)
+  downloads Int      @default(0)
+  plays     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([workId, day])
+  @@index([day])
 }
 
 // Sous-titres d'une vidéo (films et documentaires). Une piste par langue et par œuvre.

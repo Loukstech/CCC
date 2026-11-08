@@ -42,6 +42,7 @@ const TOOLS: ToolDef[] = [
   { id: "revokeCodes", title: "tool.revokeCodes.title", hint: "tool.revokeCodes.hint", roles: PARTNER_ROLES },
   { id: "bulkPublish", title: "tool.bulkPublish.title", hint: "tool.bulkPublish.hint", roles: EDITORIAL_ROLES, danger: true },
   { id: "purgeAudit", title: "tool.purgeAudit.title", hint: "tool.purgeAudit.hint", roles: ["SUPER_ADMIN"], danger: true },
+  { id: "audienceBackfill", title: "tool.audienceBackfill.title", hint: "tool.audienceBackfill.hint", roles: ["SUPER_ADMIN"] },
 ];
 
 const DATASETS: { id: string; label: CKey }[] = [

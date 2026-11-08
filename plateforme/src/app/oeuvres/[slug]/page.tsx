@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { AdSlot } from "@/components/AdSlot";
+import { AudienceTracker } from "@/components/AudienceTracker";
 import { Cover } from "@/components/Cover";
 import { PageFallback } from "@/components/PageFallback";
 import { Shelf } from "@/components/Shelf";
@@ -72,6 +73,7 @@ async function Work({ params }: { params: PageProps<"/oeuvres/[slug]">["params"]
 
   return (
     <div data-universe={UNIVERSE[work.type]} className="flex-1">
+      <AudienceTracker workId={work.id} kind="view" />
       <section className="hero-bg relative overflow-hidden text-white">
         <div className="film-strip absolute inset-y-0 right-0 w-1/2 opacity-30" aria-hidden />
         <div className="relative mx-auto grid w-full max-w-6xl gap-6 px-4 pt-28 pb-8 sm:gap-10 sm:px-5 sm:pb-16 md:grid-cols-[260px_1fr] md:items-center">
