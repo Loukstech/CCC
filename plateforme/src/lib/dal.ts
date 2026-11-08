@@ -100,6 +100,21 @@ export async function requireDioceseScope(dioceseId?: string): Promise<DioceseSc
   return { user, dioceseId: user.dioceseId, role: user.dioceseRole ?? "VIEWER" };
 }
 
+/**
+ * Tableau de bord : tous les rôles du personnel peuvent consulter les statistiques, y compris le
+ * rôle « Analyste » du cahier des charges (§4.3 : « consulter les statistiques, sans rien modifier »).
+ * Les modules d'écriture gardent chacun leur propre liste ; l'accès en lecture n'autorise aucune action.
+ */
+export const DASHBOARD_ROLES: StaffRole[] = [
+  "SUPER_ADMIN",
+  "EDITOR",
+  "RIGHTS_MANAGER",
+  "FINANCE",
+  "SUPPORT",
+  "ANALYST",
+];
+
+/** Gestion du catalogue (ajout, publication, prix, droits). */
 export const CATALOG_ROLES: StaffRole[] = ["SUPER_ADMIN", "EDITOR", "RIGHTS_MANAGER"];
 /** Envoi du fichier d'une œuvre : l'éditeur du catalogue. */
 export const FILE_ROLES: StaffRole[] = ["SUPER_ADMIN", "EDITOR"];

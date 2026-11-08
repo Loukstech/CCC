@@ -2,16 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookIcon, FilmIcon, GlobeIcon, HomeIcon, LiveIcon, SearchIcon } from "@/components/icons";
+import { BookIcon, FilmIcon, GlobeIcon, HomeIcon, LiveIcon, UserIcon } from "@/components/icons";
 import { t, type Key, type Lang } from "@/lib/i18n";
 
+/**
+ * Six onglets, dont « Compte » : la recherche est déjà présente en permanence sous le header
+ * (`.hdr-searchrow`), donc l'onglet Recherche faisait doublon. Le remplacer donne un accès direct
+ * au hub des espaces (administration, écrivain, diocèse) sur téléphone sans ajouter de navigation.
+ */
 const TABS: { href: string; label: Key; icon: typeof HomeIcon }[] = [
   { href: "/", label: "nav.home", icon: HomeIcon },
   { href: "/livres", label: "nav.books", icon: BookIcon },
   { href: "/documentaires", label: "nav.docs", icon: GlobeIcon },
   { href: "/films", label: "nav.films", icon: FilmIcon },
   { href: "/live", label: "nav.live", icon: LiveIcon },
-  { href: "/recherche", label: "nav.search", icon: SearchIcon },
+  { href: "/compte", label: "nav.account", icon: UserIcon },
 ];
 
 /** Barre d'onglets fixée en bas de l'écran sur téléphone : accès au pouce aux grands espaces. */

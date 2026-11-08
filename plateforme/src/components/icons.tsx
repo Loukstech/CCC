@@ -101,6 +101,14 @@ export const HomeIcon =({ className = "size-6" }: P) => (
   </svg>
 );
 
+/** Profil / compte : point d'entrée des espaces sur téléphone. */
+export const UserIcon = ({ className = "size-6" }: P) => (
+  <svg {...base} className={className}>
+    <circle cx="12" cy="8" r="3.6" />
+    <path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
+  </svg>
+);
+
 /** Antenne de diffusion : événements en direct (lot 8). */
 export const LiveIcon = ({ className = "size-6" }: P) => (
   <svg {...base} className={className}>

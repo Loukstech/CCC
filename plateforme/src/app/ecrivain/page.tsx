@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { ActionForm, Field, TextAreaField, SelectField } from "@/components/ActionForm";
+import { DashboardCard, StatCard, TrendChart, compact, type ChartSeries } from "@/components/dashboard";
 import { requireWriterAccess } from "@/lib/writer-access";
 import { db } from "@/lib/db";
+import { getWriterDashboard } from "@/lib/dashboard";
 import { formatMoney } from "@/lib/currency";
 import { balanceOf, statement } from "@/lib/ledger";
 import { t, type Lang } from "@/lib/i18n";
@@ -34,7 +36,7 @@ async function Writer() {
   const user = await requireWriterAccess();
   const lang = await getLang();
 
-  const [profile, works, balance, ledger, manuscripts, reviews] = await Promise.all([
+  const [profile, works, balance, ledger, manuscripts, reviews, stats] = await Promise.all([
     db.writerProfile.findUnique({ where: { userId: user.id } }),
     db.work.findMany({
       where: { authorId: user.id },
@@ -61,15 +63,27 @@ async function Writer() {
         work: { select: { slug: true, title: true } },
       },
     }),
+    getWriterDashboard(user.id),
   ]);
 
-  const sales = await db.order.aggregate({
-    where: { status: "PAID", work: { authorId: user.id } },
-    _count: { _all: true },
-  });
   const earned = ledger.months.reduce((n, m) => n + m.earned + m.refunded, 0);
   const paid = ledger.months.reduce((n, m) => n + m.paid, 0);
   const typeKey = { BOOK: "type.BOOK", FILM: "type.FILM", DOCUMENTARY: "type.DOCUMENTARY" } as const;
+  const months = stats.trend.map((m) => m.key);
+  const series: ChartSeries[] = [
+    {
+      label: t(lang, "wr.trend.sales"),
+      values: stats.trend.map((m) => m.sales),
+      color: "var(--brand)",
+      format: (n) => String(n),
+    },
+    {
+      label: t(lang, "wr.trend.reads"),
+      values: stats.trend.map((m) => m.reads),
+      color: "var(--gold)",
+      format: (n) => String(n),
+    },
+  ];
 
   return (
     <div className="flex flex-col gap-6">
@@ -78,18 +92,65 @@ async function Writer() {
         <p className="mt-1 text-sm text-muted">{t(lang, "ecr.lead")}</p>
       </header>
 
-      <section className="grid gap-3 sm:grid-cols-3">
-        {[
-          { label: t(lang, "ecr.works", { n: works.length }), value: String(works.length) },
-          { label: t(lang, "ecr.sales"), value: String(sales._count._all) },
-          { label: t(lang, "ecr.balance"), value: formatMoney(balance, "XOF", lang) },
-        ].map((stat) => (
-          <div key={stat.label} className="rounded-xl border border-line bg-surface p-4">
-            <p className="text-xs uppercase tracking-wide text-muted">{stat.label}</p>
-            <p className="font-display mt-1 text-xl font-semibold text-ink">{stat.value}</p>
-          </div>
-        ))}
+      {/* Vue d'ensemble : indicateurs financiers ET d'audience, pour ne pas réduire l'espace
+          auteur à un simple relevé de ventes souvent vide en phase de démonstration. */}
+      <section aria-label={t(lang, "wr.overview")} className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard label={t(lang, "ecr.works", { n: works.length })} value={String(works.length)} hint={t(lang, "wr.hint.works")} />
+        <StatCard label={t(lang, "ecr.sales")} value={String(stats.totals.sales)} hint={t(lang, "wr.hint.sales")} />
+        <StatCard label={t(lang, "wr.reads")} value={compact(stats.totals.reads, lang)} hint={t(lang, "wr.hint.reads")} accent="gold" />
+        <StatCard label={t(lang, "ecr.balance")} value={formatMoney(balance, "XOF", lang)} hint={t(lang, "wr.hint.balance")} accent="gold" />
       </section>
+
+      <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+        <DashboardCard title={t(lang, "wr.trend.title")} lead={t(lang, "wr.trend.lead")}>
+          <TrendChart months={months} series={series} lang={lang} ariaLabel={t(lang, "wr.trend.title")} />
+        </DashboardCard>
+
+        <DashboardCard title={t(lang, "wr.audience.title")} lead={t(lang, "wr.audience.lead")}>
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+            {[
+              { label: t(lang, "wr.favorites"), value: String(stats.totals.favorites) },
+              { label: t(lang, "wr.bookmarks"), value: String(stats.totals.bookmarks) },
+              { label: t(lang, "wr.reviews"), value: String(stats.totals.reviews) },
+              { label: t(lang, "wr.rating"), value: stats.totals.ratingAvg ? `${stats.totals.ratingAvg.toFixed(1)} / 5` : "—" },
+            ].map((x) => (
+              <div key={x.label} className="rounded-xl bg-brand/5 px-3 py-2.5">
+                <dt className="text-[11px] uppercase tracking-wide text-muted">{x.label}</dt>
+                <dd className="font-display mt-0.5 text-xl font-semibold text-brand tabular-nums">{x.value}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-3 text-xs text-muted">{t(lang, "wr.audience.note")}</p>
+        </DashboardCard>
+      </div>
+
+      {stats.emptyAudience && (
+        <p className="rounded-xl border border-gold/40 bg-gold-soft/30 px-4 py-3 text-xs text-ink">
+          {t(lang, "wr.emptyAudience")}
+        </p>
+      )}
+
+      {stats.topWorks.length > 0 && (
+        <DashboardCard title={t(lang, "wr.top.title")} lead={t(lang, "wr.top.lead")}>
+          <ul className="flex flex-col divide-y divide-line">
+            {stats.topWorks.map((w) => (
+              <li key={w.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                <span className="min-w-0">
+                  <Link href={`/oeuvres/${w.slug}`} className="block truncate font-medium text-ink hover:text-brand hover:underline">
+                    {w.title}
+                  </Link>
+                  <span className="text-xs text-muted">{t(lang, typeKey[w.type])}</span>
+                </span>
+                <span className="shrink-0 text-right text-xs text-muted">
+                  <span className="block font-semibold text-ink tabular-nums">{t(lang, "wr.top.reads", { n: w.reads })}</span>
+                  {t(lang, "wr.top.sales", { n: w.sales })}
+                  {w.ratingCount > 0 && ` · ${w.ratingAvg.toFixed(1)} / 5`}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </DashboardCard>
+      )}
 
       <section className={card}>
         <div className="flex flex-wrap items-baseline justify-between gap-2">

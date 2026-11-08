@@ -5,6 +5,7 @@ import { logout } from "@/app/actions/auth";
 import { authorizeThisDevice, revokeDevice } from "@/app/actions/devices";
 import { cancelSubscription } from "@/app/actions/payments";
 import { getActiveSubscription } from "@/lib/access";
+import { BookIcon, BookmarkIcon, GlobeIcon, ShieldIcon } from "@/components/icons";
 import { countryName } from "@/lib/countries";
 import { formatMoney } from "@/lib/currency";
 import { getCurrentUser } from "@/lib/dal";
@@ -12,6 +13,7 @@ import { DEVICE_LIMIT } from "@/lib/devices";
 import { db } from "@/lib/db";
 import { t, type Key, type Lang } from "@/lib/i18n";
 import { getLang } from "@/lib/lang";
+import { partnerCodesRequired } from "@/lib/partner-codes";
 
 export const metadata = { title: "Mon compte — CCC" };
 
@@ -26,6 +28,68 @@ const card = "rounded-2xl border border-line bg-surface p-5 shadow-sm";
 const h2 = "font-display text-xl font-semibold text-brand";
 const dateOf = (d: Date, lang: Lang) =>
   d.toLocaleDateString(lang === "fr" ? "fr-FR" : "en-GB", { day: "numeric", month: "long", year: "numeric" });
+
+/**
+ * Hub des espaces : un seul endroit, visible sur toutes les tailles d'écran, qui liste les accès
+ * réellement ouverts au compte. Le header masque ces liens sur téléphone (`sm:block`), et la barre
+ * d'onglets mobile n'en contient aucun : sans ce bloc, un administrateur sur mobile ne peut pas
+ * rejoindre la console. Les tuiles sont filtrées par rôle pour ne jamais promettre un accès refusé.
+ */
+async function SpaceLinks({
+  lang,
+  userId,
+  staffRole,
+  dioceseId,
+}: {
+  lang: Lang;
+  userId: string;
+  staffRole: string | null;
+  dioceseId: string | null;
+}) {
+  const codesRequired = partnerCodesRequired();
+  const profile = codesRequired
+    ? await db.writerProfile.findUnique({ where: { userId }, select: { status: true } })
+    : null;
+  const writerAllowed = !codesRequired || profile?.status === "APPROVED";
+
+  const spaces: { href: string; label: Key; hint: Key; icon: typeof BookIcon }[] = [
+    { href: "/bibliotheque", label: "space.library", hint: "space.libraryHint", icon: BookmarkIcon },
+  ];
+  if (staffRole) {
+    spaces.unshift({ href: "/admin", label: "space.admin", hint: "space.adminHint", icon: ShieldIcon });
+  }
+  if (writerAllowed) {
+    spaces.push({ href: "/ecrivain", label: "space.writer", hint: "space.writerHint", icon: BookIcon });
+  }
+  if (dioceseId || staffRole === "SUPER_ADMIN") {
+    spaces.push({ href: "/diocese", label: "space.diocese", hint: "space.dioceseHint", icon: GlobeIcon });
+  }
+
+  return (
+    <section id="espaces" className={card} aria-labelledby="espaces-title">
+      <h2 id="espaces-title" className={h2}>{t(lang, "space.title")}</h2>
+      <p className="mt-1 text-sm text-muted">{t(lang, "space.lead")}</p>
+      <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+        {spaces.map(({ href, label, hint, icon: Icon }) => (
+          <li key={href}>
+            <Link
+              href={href}
+              className="flex h-full items-center gap-3 rounded-xl border border-line p-4 transition-colors hover:border-brand hover:bg-brand/5"
+            >
+              <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand">
+                <Icon className="size-5" />
+              </span>
+              <span className="min-w-0">
+                <span className="block font-semibold text-ink">{t(lang, label)}</span>
+                <span className="block text-xs text-muted">{t(lang, hint)}</span>
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 export default function AccountPage() {
   return (
@@ -61,6 +125,9 @@ async function Account() {
     <>
     <h1 className="font-display text-3xl font-semibold text-brand sm:text-4xl">{t(lang, "nav.myAccount")}</h1>
     <div className="mt-6 flex flex-col gap-6">
+      <Suspense fallback={<p className="text-muted" aria-busy="true">…</p>}>
+        <SpaceLinks lang={lang} userId={user.id} staffRole={user.staffRole} dioceseId={user.dioceseId} />
+      </Suspense>
       {!user.deviceOk && devices.length >= DEVICE_LIMIT && (
         <p role="alert" className="rounded-2xl bg-amber-500/10 p-4 text-sm text-amber-900 ring-1 ring-amber-500/40 dark:text-amber-100">
           <strong>{t(lang, "account.deviceLimit", { max: DEVICE_LIMIT })}</strong> {t(lang, "account.deviceLimitText")}
