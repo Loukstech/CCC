@@ -24,7 +24,7 @@ export function HeaderShell({ children }: { children: React.ReactNode }) {
 
   return (
     <header
-      className="site-header"
+      className="site-header ccc-site-chrome"
       data-overlay={isOverlayRoute(pathname) ? "" : undefined}
       data-scrolled={scrolled ? "" : undefined}
     >

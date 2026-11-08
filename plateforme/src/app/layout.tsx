@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Fraunces, Geist } from "next/font/google";
 import { StickyAdLoader } from "@/components/StickyAdLoader";
+import { AnnouncementBar } from "@/components/AnnouncementBar";
 import { BottomNavLoader } from "@/components/BottomNavLoader";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
@@ -32,7 +33,7 @@ export const metadata: Metadata = {
 };
 
 // Pose le thème (choix enregistré, sinon thème de l'appareil) avant le premier affichage : pas de clignotement.
-const THEME_SCRIPT = `try{var m=localStorage.getItem("ccc-theme");var d=m==="dark"||(m!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.dataset.theme=d?"dark":"light";var c=document.cookie.match(/ccc_lang=(fr|en)/);document.documentElement.lang=c?c[1]:((navigator.language||"").toLowerCase().indexOf("en")===0?"en":"fr")}catch(e){}`;
+const THEME_SCRIPT = `try{var m=localStorage.getItem("ccc-theme");var d=m==="dark"||(m!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.dataset.theme=d?"dark":"light";var c=document.cookie.match(/ccc_lang=(fr|en)/);document.documentElement.lang=c?c[1]:((navigator.language||"").toLowerCase().indexOf("en")===0?"en":"fr");if(location.pathname.indexOf("/admin")===0)document.documentElement.setAttribute("data-console","")}catch(e){}`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
@@ -42,9 +43,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body suppressHydrationWarning className="flex min-h-full flex-col bg-paper text-ink">
         <Suspense fallback={null}>
+          <AnnouncementBar />
+        </Suspense>
+        <Suspense fallback={null}>
           <Header />
         </Suspense>
-        <div className="flex flex-1 flex-col pb-16 md:pb-0">{children}</div>
+        <div className="ccc-site-main flex flex-1 flex-col pb-16 md:pb-0">{children}</div>
         <Suspense fallback={null}>
           <StickyAdLoader />
         </Suspense>

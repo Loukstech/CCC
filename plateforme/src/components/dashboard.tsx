@@ -99,12 +99,16 @@ export function TrendChart({
   series,
   lang,
   ariaLabel,
+  labels,
 }: {
   months: string[];
   series: ChartSeries[];
   lang: Lang;
   ariaLabel: string;
+  /** Libellés déjà formatés (jours/semaines) : sinon `months` est traité comme « AAAA-MM ». */
+  labels?: string[];
 }) {
+  const labelAt = (i: number) => labels?.[i] ?? monthLabel(months[i], lang);
   const W = 600;
   const H = 180;
   const PAD_X = 10;
@@ -146,7 +150,7 @@ export function TrendChart({
               <path d={line} fill="none" stroke={s.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
               {s.values.map((v, i) => (
                 <circle key={i} cx={x(i)} cy={y(v)} r="3.5" fill="var(--surface)" stroke={s.color} strokeWidth="2">
-                  <title>{`${monthLabel(months[i], lang)} · ${s.label} : ${s.format(v)}`}</title>
+                  <title>{`${labelAt(i)} · ${s.label} : ${s.format(v)}`}</title>
                 </circle>
               ))}
             </g>
@@ -161,7 +165,7 @@ export function TrendChart({
             fontSize="11"
             fill="var(--muted)"
           >
-            {monthLabel(m, lang)}
+            {labelAt(i)}
           </text>
         ))}
       </svg>

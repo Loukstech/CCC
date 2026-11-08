@@ -1154,5 +1154,6 @@ export const fr = {
   "wr.top.lead": "Classées par lectures puis par ventes.",
   "wr.top.reads": "{n} lecture(s)",
   "wr.top.sales": "{n} vente(s)",
+  "err.maintenance": "Les inscriptions sont temporairement suspendues pour maintenance. Réessayez dans quelques instants.",
   // @@KEYS
 } as const;

@@ -15,6 +15,7 @@ import {
   normalizeCode,
   partnerCodesRequired,
 } from "@/lib/partner-codes";
+import { getBool } from "@/lib/settings";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -25,6 +26,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  */
 export async function signupWriter(_: FormState, formData: FormData): Promise<FormState> {
   const lang = await getLang();
+  if (await getBool("maintenance_mode")) return { error: t(lang, "err.maintenance") };
   const values = keep(formData, ["name", "email", "country", "dioceseId", "parishId"]);
   const name = values.name.trim();
   const email = values.email.trim().toLowerCase();

@@ -10,7 +10,7 @@ import { SITE, COPYRIGHT_YEAR } from "@/lib/site";
 export async function Footer() {
   const lang = await getLang();
   return (
-    <footer className="bg-brand-night text-white/70">
+    <footer className="ccc-site-chrome bg-brand-night text-white/70">
       <div className="rainbow-bar" aria-hidden />
       <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-10 sm:px-5 sm:py-12 md:grid-cols-[1.4fr_1fr_1fr] md:gap-10">
         <div>

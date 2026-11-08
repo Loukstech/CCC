@@ -5,7 +5,7 @@ import { PageFallback } from "@/components/PageFallback";
 import { HeadsetIcon } from "@/components/icons";
 import { t, type Key, type Lang } from "@/lib/i18n";
 import { getLang } from "@/lib/lang";
-import { SITE, isDemoContact, phoneHref, whatsappHref } from "@/lib/site";
+import { getContact, phoneHref, whatsappHref } from "@/lib/site";
 
 export async function generateMetadata() {
   const lang = await getLang();
@@ -44,8 +44,9 @@ const card = "rounded-2xl border border-line bg-surface p-5 shadow-sm";
 async function ContactContent() {
   const lang: Lang = await getLang();
   const subjects = SUBJECTS.map((s) => ({ value: s.value, label: t(lang, s.key) }));
-  const wa = whatsappHref(SITE.whatsapp);
-  const tel = phoneHref(SITE.contactPhone);
+  const contact = await getContact();
+  const wa = whatsappHref(contact.whatsapp);
+  const tel = phoneHref(contact.phone);
 
   return (
     <>
@@ -60,7 +61,7 @@ async function ContactContent() {
       </section>
 
       <section className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-5 sm:py-12">
-        {isDemoContact() && (
+        {contact.demo && (
           <p role="note" className="mb-6 rounded-xl bg-amber-500/10 px-4 py-3 text-sm text-amber-800 ring-1 ring-amber-500/30 dark:text-amber-200">
             <strong>{t(lang, "footer.demo")}.</strong> {t(lang, "contact.demoNote")}
           </p>
@@ -73,10 +74,10 @@ async function ContactContent() {
             <div className={card}>
               <p className="text-xs font-semibold tracking-wider text-muted uppercase">{t(lang, "contact.emailLabel")}</p>
               <a
-                href={`mailto:${SITE.contactEmail}`}
+                href={`mailto:${contact.email}`}
                 className="mt-2 inline-block text-lg font-semibold text-brand underline-offset-4 hover:underline break-all"
               >
-                {SITE.contactEmail}
+                {contact.email}
               </a>
               <p className="mt-2 text-sm text-muted">{t(lang, "contact.emailHint")}</p>
             </div>
@@ -85,7 +86,7 @@ async function ContactContent() {
               <div className={card}>
                 <p className="text-xs font-semibold tracking-wider text-muted uppercase">{t(lang, "contact.whatsappLabel")}</p>
                 <a href={wa} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-lg font-semibold text-brand underline-offset-4 hover:underline">
-                  +{SITE.whatsapp.replace(/\D/g, "")}
+                  +{contact.whatsapp.replace(/\D/g, "")}
                 </a>
                 <p className="mt-2 text-sm text-muted">{t(lang, "contact.whatsappHint")}</p>
               </div>
@@ -95,7 +96,7 @@ async function ContactContent() {
               <div className={card}>
                 <p className="text-xs font-semibold tracking-wider text-muted uppercase">{t(lang, "contact.phoneLabel")}</p>
                 <a href={tel} className="mt-2 inline-block text-lg font-semibold text-brand underline-offset-4 hover:underline">
-                  {SITE.contactPhone}
+                  {contact.phone}
                 </a>
               </div>
             )}
@@ -110,7 +111,7 @@ async function ContactContent() {
           <div id="probleme" className={`${card} scroll-mt-24 sm:p-6`}>
             <h2 className="font-display text-xl font-semibold text-ink">{t(lang, "contact.formTitle")}</h2>
             <p className="mt-1 mb-5 text-sm text-muted">{t(lang, "contact.formLead")}</p>
-            <ContactForm lang={lang} to={SITE.contactEmail} subjects={subjects} />
+            <ContactForm lang={lang} to={contact.email} subjects={subjects} />
           </div>
         </div>
       </section>

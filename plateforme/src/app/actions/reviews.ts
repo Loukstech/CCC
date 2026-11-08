@@ -10,6 +10,7 @@ import { t } from "@/lib/i18n";
 import { getLang } from "@/lib/lang";
 import { isReason, isTarget, type ReportTarget } from "@/lib/moderation";
 import { BODY_MAX, RATING_MAX, RATING_MIN, recomputeComments, recomputeRating } from "@/lib/reviews";
+import { getSettings } from "@/lib/settings";
 
 /** Motifs et cibles : voir src/lib/moderation.ts (un fichier "use server" ne peut exporter que des fonctions). */
 
@@ -41,11 +42,13 @@ export async function saveReview(_: FormState, formData: FormData): Promise<Form
   });
   if (!work) return { error: t(lang, "err.workMissing"), values };
 
+  // Réglage « Publier les avis immédiatement » : sinon l'avis part en file de modération.
+  const status = (await getSettings()).reviews_auto_publish === "false" ? "PENDING" : "PUBLISHED";
   await db.$transaction(async (tx) => {
     await tx.review.upsert({
       where: { userId_workId: { userId: user.id, workId: work.id } },
-      update: { rating, body: body || null, status: "PUBLISHED" },
-      create: { workId: work.id, userId: user.id, rating, body: body || null },
+      update: { rating, body: body || null, status },
+      create: { workId: work.id, userId: user.id, rating, body: body || null, status },
     });
     await recomputeRating(tx, work.id);
   });

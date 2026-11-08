@@ -94,6 +94,58 @@ body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
+/*
+ * Console d'administration (/admin/*) : l'espace de travail occupe tout l'écran, sans en-tête,
+ * pied de page, barre d'onglets ni publicité fixe du site public. Le drapeau est posé avant le
+ * premier affichage par le script du layout racine, donc aucun flash de contenu public.
+ * Le chrome reste présent dans le HTML (rendu serveur, pas de composant client supplémentaire).
+ */
+html[data-console] .ccc-site-chrome {
+  display: none !important;
+}
+html[data-console] .ccc-site-main {
+  padding-bottom: 0 !important;
+}
+
+/* Tableaux denses de la console : lignes compactes, défilement horizontal sur petits écrans. */
+.console-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+.console-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding: 0.5rem 0.625rem;
+  text-align: left;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.console-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 0.4rem 0.625rem;
+  color: var(--ink);
+  vertical-align: middle;
+}
+.console-table tbody tr:hover {
+  background: color-mix(in srgb, var(--brand) 5%, transparent);
+}
+.console-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.console-scroll {
+  max-height: 22rem;
+  overflow: auto;
+}
+
 ::selection {
   background: var(--gold);
   color: var(--brand-night);

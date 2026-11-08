@@ -1154,5 +1154,6 @@ export const en: Record<Key, string> = {
   "wr.top.lead": "Ranked by reads, then sales.",
   "wr.top.reads": "{n} read(s)",
   "wr.top.sales": "{n} sale(s)",
+  "err.maintenance": "Registrations are temporarily suspended for maintenance. Please try again shortly.",
   // @@KEYS
 };

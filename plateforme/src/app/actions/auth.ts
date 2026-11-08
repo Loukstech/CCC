@@ -8,11 +8,13 @@ import { createSession, deleteSession } from "@/lib/session";
 import { keep, type FormState } from "@/lib/form";
 import { t } from "@/lib/i18n";
 import { getLang } from "@/lib/lang";
+import { getBool } from "@/lib/settings";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function signup(_: FormState, formData: FormData): Promise<FormState> {
   const lang = await getLang();
+  if (await getBool("maintenance_mode")) return { error: t(lang, "err.maintenance") };
   const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");

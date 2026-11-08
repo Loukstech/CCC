@@ -14,6 +14,7 @@ import {
   normalizeCode,
   partnerCodesRequired,
 } from "@/lib/partner-codes";
+import { getBool } from "@/lib/settings";
 import { randomBytes } from "node:crypto";
 
 const slugify = (s: string) =>
@@ -123,6 +124,7 @@ export async function deleteDiocese(_: FormState, formData: FormData): Promise<F
  */
 export async function registerDioceseAccount(_: FormState, formData: FormData): Promise<FormState> {
   const lang = await getLang();
+  if (await getBool("maintenance_mode")) return { error: t(lang, "err.maintenance") };
   const values = keep(formData, ["name", "email", "dioceseId"]);
   const name = values.name.trim();
   const email = values.email.trim().toLowerCase();

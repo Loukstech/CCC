@@ -699,6 +699,17 @@ model LiveBroadcaster {
   events LiveEvent[] @relation("LiveBroadcasterEvents")
 }
 
+/// Paramètres applicatifs modifiables à chaud depuis la console d'administration.
+/// Les secrets et les choix d'infrastructure (clés API, base, prestataires) restent des
+/// variables d'environnement : ils ne doivent jamais être éditables depuis l'interface.
+/// Chaque modification est en plus tracée dans AuditLog (action "setting.update").
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+}
+
 /// Événement diffusé en direct. Le flux lui-même vient d'un prestataire externe (embed ou Mux HLS).
 model LiveEvent {
   id            String         @id @default(cuid())

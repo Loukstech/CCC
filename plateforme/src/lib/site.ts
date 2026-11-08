@@ -1,4 +1,5 @@
 import "server-only";
+import { getSettings } from "@/lib/settings";
 
 /**
  * Coordonnées publiques et crédits du site.
@@ -34,6 +35,22 @@ export const SITE = {
 
 /** Vrai tant que le porteur du projet n'a pas fourni ses vraies coordonnées. */
 export const isDemoContact = (): boolean => SITE.contactEmail.endsWith(".example");
+
+/**
+ * Coordonnées effectives : les réglages de /admin/parametres ont priorité sur les variables
+ * d'environnement, qui servent de repli. Permet au porteur de projet de renseigner ses vraies
+ * coordonnées sans redéploiement.
+ */
+export async function getContact() {
+  const s = await getSettings();
+  const email = s.support_email?.trim() || SITE.contactEmail;
+  return {
+    email,
+    phone: s.support_phone?.trim() || SITE.contactPhone,
+    whatsapp: s.support_whatsapp?.trim() || SITE.whatsapp,
+    demo: email.endsWith(".example"),
+  };
+}
 
 /** Lien WhatsApp durable (`wa.me`), ou null si aucun numéro n'est configuré. */
 export function whatsappHref(number: string): string | null {
